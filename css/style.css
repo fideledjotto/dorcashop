@@ -64,13 +64,26 @@ a:focus-visible, button:focus-visible, input:focus-visible{
 .section-head{ max-width: 640px; margin-bottom: 40px; }
 .section-tag{
   display:inline-block;
-  font-weight:700; font-size:13px;
-  color: var(--magenta);
-  background: #FCE6F1;
-  padding: 5px 12px;
+  font-weight:700; font-size:14px;
+  color: white;
+  background: #E6007E;
+  padding: 6px 16px;
   border-radius: 999px;
   margin-bottom: 14px;
+  
 }
+
+.section-tags{
+  display:inline-block;
+  font-weight:700; font-size:14px;
+  color: white;
+  background: #E6007E;
+  padding: 8px 16px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+  
+}
+
 .section-head h2{ font-size: clamp(28px, 3.6vw, 40px); color: var(--navy); }
 .section-head p{ margin-top: 12px; font-size: 16px; color: var(--ink-soft); line-height:1.6; }
 
@@ -489,6 +502,8 @@ a:focus-visible, button:focus-visible, input:focus-visible{
 .promo-grid .card-body h4{ color:#fff; }
 .promo-grid .card-desc{ color:#9BA5C1; }
 .promo-grid .card-media{ background:#0F1B36; }
+.promo-grid .card-price{ color: var(--yellow); }
+.promo-grid .card-gros{ color: var(--yellow); }
 
 /* =========================================================
    WHOLESALE BANNER
