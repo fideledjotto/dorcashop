@@ -164,6 +164,41 @@
   });
 
   /* ---------------------------------------------------------
+     Carrousel des images des familles de produits
+     --------------------------------------------------------- */
+  document.querySelectorAll(".cat-card[data-images]").forEach((card)=>{
+    const images = (card.dataset.images || "").split("|").map(s => s.trim()).filter(Boolean);
+    if (images.length < 2) return;
+
+    const imgWrap = card.querySelector(".img-wrap");
+    if (!imgWrap) return;
+
+    const existingImg = imgWrap.querySelector("img");
+    if (existingImg) existingImg.remove();
+
+    const slides = images.map((src, index)=>{
+      const img = new Image();
+      img.src = src;
+      img.alt = card.querySelector("h3")?.textContent || "";
+      img.className = index === 0 ? "active" : "";
+      img.style.opacity = index === 0 ? "1" : "0";
+      img.style.transition = "opacity 1s ease";
+      imgWrap.appendChild(img);
+      return img;
+    });
+
+    let activeIndex = 0;
+    window.setInterval(() => {
+      const nextIndex = (activeIndex + 1) % slides.length;
+      slides[activeIndex].classList.remove("active");
+      slides[activeIndex].style.opacity = "0";
+      slides[nextIndex].classList.add("active");
+      slides[nextIndex].style.opacity = "1";
+      activeIndex = nextIndex;
+    }, 5000);
+  });
+
+  /* ---------------------------------------------------------
      Boucle infinie du hero : échange des deux affiches en continu
      --------------------------------------------------------- */
   const heroGallery = document.querySelector(".hero-gallery");
@@ -370,18 +405,9 @@
   toTopBtn.addEventListener("click", ()=> window.scrollTo({ top:0, behavior:"smooth" }));
 
   /* ---------------------------------------------------------
-     Apparition progressive au scroll
+     Apparition immédiate
      --------------------------------------------------------- */
-  const revealEls = document.querySelectorAll(".reveal");
-  const io = new IntersectionObserver((entries)=>{
-    entries.forEach(entry=>{
-      if(entry.isIntersecting){
-        entry.target.classList.add("in");
-        io.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.14 });
-  revealEls.forEach(el=> io.observe(el));
+  document.querySelectorAll(".reveal").forEach(el => el.classList.add("in"));
 
   /* ---------------------------------------------------------
      Init

@@ -56,7 +56,7 @@ a:focus-visible, button:focus-visible, input:focus-visible{
 }
 
 /* ---------- reveal on scroll ---------- */
-.reveal{ opacity:0; transform: translateY(14px); transition: opacity .5s var(--ease), transform .5s var(--ease); }
+.reveal{ opacity:1; transform:none; }
 .reveal.in{ opacity:1; transform:none; }
 
 /* ---------- section spacing / eyebrow-free headings ---------- */
@@ -170,7 +170,19 @@ a:focus-visible, button:focus-visible, input:focus-visible{
   padding: 16px 4px; border-bottom: 1px solid var(--line);
 }
 .mobile-nav .mobile-cta{ margin-top:24px; display:flex; flex-direction:column; gap:12px; }
-.mobile-nav .mobile-cta .btn{ width:100%; color:#fff; }
+.mobile-nav .mobile-cta .btn{
+  width:100%; color:#fff;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+}
+.mobile-nav .mobile-cta .btn-outline{
+  color:#fff;
+  border-color: var(--navy);
+  background: var(--navy);
+}
+.mobile-nav .mobile-cta .btn-outline:hover{
+  background: var(--navy-light);
+  color:#fff;
+}
 
 /* =========================================================
    HERO
@@ -354,7 +366,11 @@ a:focus-visible, button:focus-visible, input:focus-visible{
 .cat-card h3{ font-size: 19px; position:relative; z-index:2; }
 .cat-card p{ font-size: 13px; color: rgba(255,255,255,.85); margin-top:6px; position:relative; z-index:2; max-width: 85%; }
 .cat-card .img-wrap{ position:absolute; inset:0; }
-.cat-card .img-wrap img{ width:100%; height:100%; object-fit:cover; }
+.cat-card .img-wrap img{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  opacity:0; transition: opacity 1s ease;
+}
+.cat-card .img-wrap img.active{ opacity:1; }
 .cat-card .overlay{ position:absolute; inset:0; background: linear-gradient(0deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.15) 55%, rgba(0,0,0,.05) 100%); }
 .cat-card .tag{
   position:absolute; top:16px; left:16px; z-index:2;
