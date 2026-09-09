@@ -164,7 +164,7 @@
   });
 
   /* ---------------------------------------------------------
-     Carrousel des images des familles de produits
+     Images de famille défilables manuellement par balayage
      --------------------------------------------------------- */
   document.querySelectorAll(".cat-card[data-images]").forEach((card)=>{
     const images = (card.dataset.images || "").split("|").map(s => s.trim()).filter(Boolean);
@@ -182,20 +182,75 @@
       img.alt = card.querySelector("h3")?.textContent || "";
       img.className = index === 0 ? "active" : "";
       img.style.opacity = index === 0 ? "1" : "0";
-      img.style.transition = "opacity 1s ease";
+      img.style.transform = index === 0 ? "none" : "translateX(18px)";
       imgWrap.appendChild(img);
       return img;
     });
 
     let activeIndex = 0;
-    window.setInterval(() => {
-      const nextIndex = (activeIndex + 1) % slides.length;
-      slides[activeIndex].classList.remove("active");
-      slides[activeIndex].style.opacity = "0";
-      slides[nextIndex].classList.add("active");
-      slides[nextIndex].style.opacity = "1";
-      activeIndex = nextIndex;
-    }, 5000);
+    let touchStartX = 0;
+    let hasMovedEnough = false;
+
+    const showSlide = (index) => {
+      slides.forEach((img, i) => {
+        const isActive = i === index;
+        img.classList.toggle("active", isActive);
+        img.style.opacity = isActive ? "1" : "0";
+        img.style.transform = isActive ? "none" : "translateX(18px)";
+      });
+      activeIndex = index;
+    };
+
+    const handleSwipe = (startX, endX) => {
+      const deltaX = endX - startX;
+      if (Math.abs(deltaX) < 40) return false;
+      if (deltaX < 0) showSlide((activeIndex + 1) % slides.length);
+      if (deltaX > 0) showSlide((activeIndex - 1 + slides.length) % slides.length);
+      return true;
+    };
+
+    card.addEventListener("touchstart", (event) => {
+      touchStartX = event.touches[0].clientX;
+      hasMovedEnough = false;
+    }, { passive: true });
+
+    card.addEventListener("touchmove", (event) => {
+      const deltaX = event.touches[0].clientX - touchStartX;
+      if (Math.abs(deltaX) > 30) hasMovedEnough = true;
+    }, { passive: true });
+
+    card.addEventListener("touchend", (event) => {
+      const touchEndX = event.changedTouches[0].clientX;
+      const swiped = handleSwipe(touchStartX, touchEndX);
+      if (swiped) {
+        event.preventDefault();
+      }
+      hasMovedEnough = false;
+    }, { passive: false });
+
+    card.addEventListener("pointerdown", (event) => {
+      touchStartX = event.clientX;
+      hasMovedEnough = false;
+    });
+
+    card.addEventListener("pointermove", (event) => {
+      if (Math.abs(event.clientX - touchStartX) > 30) hasMovedEnough = true;
+    });
+
+    card.addEventListener("pointerup", (event) => {
+      const swiped = handleSwipe(touchStartX, event.clientX);
+      if (swiped) {
+        event.preventDefault();
+      }
+      hasMovedEnough = false;
+    });
+
+    card.addEventListener("click", (event) => {
+      if (hasMovedEnough) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    });
   });
 
   /* ---------------------------------------------------------
