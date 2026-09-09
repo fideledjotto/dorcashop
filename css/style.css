@@ -612,6 +612,13 @@ table.price-table td:last-child{ text-align:right; font-weight:800; color: var(-
   .search-box{ width:100%; }
   .footer-grid{ grid-template-columns: 1fr; }
   .footer-brand{ grid-column: span 1; }
+  .footer-bottom{
+    padding-top: 28px;
+    margin-top: 22px;
+    gap: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
   .cart-drawer{ width: 100%; }
   .hero-badge{
     display:block;
