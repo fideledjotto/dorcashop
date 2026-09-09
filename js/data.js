@@ -309,7 +309,7 @@ const PRODUCTS = [
 const CATEGORY_LABELS = {
   tous: "Tous",
   fournitures: "Fournitures scolaires",
-  etudiants: "Étudiants",
+  etudiants: "Etudiants",
   enfants: "Enfants",
   maison: "Maison",
   gros: "Gros"

@@ -5,7 +5,7 @@
   const CART_KEY = "dorcashop_cart_v1";
 
   /* ---------------------------------------------------------
-     Icônes sobres (remplacent une photo quand aucune n'a été fournie)
+     Icones sobres (remplacent une photo quand aucune n'a ete fournie)
      --------------------------------------------------------- */
   const ICONS = {
     sketch: `<svg viewBox="0 0 48 48" fill="none" stroke="#142343" stroke-width="2"><rect x="9" y="6" width="30" height="36" rx="2"/><path d="M15 16h18M15 23h18M15 30h11" stroke-linecap="round"/><path d="M31 30l4 4-2 5-5-2 3-7z" fill="#FFD400" stroke="#142343"/></svg>`,
@@ -24,7 +24,7 @@
   };
 
   /* ---------------------------------------------------------
-     État
+     Etat
      --------------------------------------------------------- */
   let cart = loadCart();
   let activeFilter = "tous";
@@ -162,6 +162,24 @@
     searchTerm = searchInput.value.trim().toLowerCase();
     applyFilters();
   });
+
+  /* ---------------------------------------------------------
+     Boucle du hero : échange des deux affiches toutes les 3s
+     --------------------------------------------------------- */
+  const heroGallery = document.querySelector(".hero-gallery");
+  if (heroGallery) {
+    const triggerHeroSwap = () => {
+      heroGallery.classList.remove("is-swapping");
+      void heroGallery.offsetWidth;
+      heroGallery.classList.add("is-swapping");
+      window.setTimeout(() => {
+        heroGallery.classList.remove("is-swapping");
+      }, 1200);
+    };
+
+    triggerHeroSwap();
+    window.setInterval(triggerHeroSwap, 8000);
+  }
 
   /* ---------------------------------------------------------
      Modal détails tarifaires
