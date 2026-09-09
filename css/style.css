@@ -195,7 +195,7 @@ a:focus-visible, button:focus-visible, input:focus-visible{
   padding: 7px 14px; border-radius: 999px; margin-bottom:22px;
 }
 .hero-copy h1{
-  color:#fff; font-size: clamp(10px, 4.4vw, 52px); line-height:1.08;
+  color:#fff; font-size: clamp(27px, 4.4vw, 52px); line-height:1.08;
 }
 .hero-copy .lede{
   color: #D9DEEA; font-size: 18px; line-height:1.6; margin-top: 20px; max-width: 480px;
@@ -252,17 +252,17 @@ a:focus-visible, button:focus-visible, input:focus-visible{
 }
 
 .hero-gallery.is-swapping .hero-main{
-  transform: translate(46%, 30%) rotate(8deg);
+  transform: translateX(38%) rotate(0deg);
   z-index: 2;
 }
 
 .hero-gallery.is-swapping .hero-side{
-  transform: translate(-46%, -30%) rotate(-7deg);
+  transform: translateX(-38%) rotate(0deg);
   z-index: 1;
 }
 
 .hero-gallery.is-swapping .hero-badge{
-  transform: translate(-18%, 12%) rotate(0deg);
+  transform: translateX(10%) rotate(0deg);
 }
 
 .hero-main,

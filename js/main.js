@@ -164,10 +164,10 @@
   });
 
   /* ---------------------------------------------------------
-     Boucle du hero : échange des deux affiches toutes les 3s
+     Boucle infinie du hero : échange des deux affiches en continu
      --------------------------------------------------------- */
   const heroGallery = document.querySelector(".hero-gallery");
-  if (heroGallery) {
+  if (heroGallery && window.matchMedia("(max-width: 860px)").matches) {
     const triggerHeroSwap = () => {
       heroGallery.classList.remove("is-swapping");
       void heroGallery.offsetWidth;
