@@ -32,6 +32,7 @@
 
   const grid = document.getElementById("productGrid");
   const noResults = document.getElementById("noResults");
+  const catalogProducts = () => window.DORCASHOPStore ? window.DORCASHOPStore.getCatalogProducts() : PRODUCTS;
 
   function loadCart(){
     try{
@@ -59,18 +60,12 @@
   }
 
   function productCardHTML(p){
-    const barColor = CAT_COLORS[p.cats[0]] || "#142343";
-    const badge = p.badge ? `<span class="card-badge ${badgeClass(p.badge)}">${p.badge}</span>` : "";
-    const detailsBtn = p.details ? `<button class="details-btn" data-id="${p.id}" aria-label="Voir les tarifs détaillés de ${p.name}">+</button>` : "";
-    const gros = p.priceGros ? `<div class="card-gros">Gros : ${p.priceGros}</div>` : "";
-    const isPromo = Boolean(p.badge);
-    const priceClass = '';
-    return `
+    return window.DORCASHOPStore ? window.DORCASHOPStore.buildProductCardMarkup(p) : `
     <article class="product-card" data-id="${p.id}" data-cats="${p.cats.join(" ")}" data-name="${p.name.toLowerCase()}">
-      <div class="card-cat-bar" style="background:${barColor}"></div>
+      <div class="card-cat-bar" style="background:${CAT_COLORS[p.cats[0]] || "#142343"}"></div>
       <div class="card-media">
-        ${badge}
-        ${detailsBtn}
+        ${p.badge ? `<span class="card-badge badge-${p.badge.replace(/\s+/g, "")}">${p.badge}</span>` : ""}
+        ${p.details ? `<button class="details-btn" data-id="${p.id}" aria-label="Voir les tarifs détaillés de ${p.name}">+</button>` : ""}
         ${cardMedia(p)}
       </div>
       <div class="card-body">
@@ -78,18 +73,20 @@
         <p class="card-desc">${p.desc}</p>
         <div class="card-price-row">
           <div>
-            <span class="card-price ${priceClass}">${p.price}</span>
+            ${p.oldPrice ? `<div class="card-old-price">${p.oldPrice}</div>` : ""}
+            <span class="card-price">${p.price}</span>
             <small>${p.priceNote || ""}</small>
           </div>
         </div>
-        ${gros}
+        ${p.priceGros ? `<div class="card-gros">Gros : ${p.priceGros}</div>` : ""}
         <button class="card-order-btn" data-id="${p.id}">Commander</button>
       </div>
     </article>`;
   }
 
   function renderGrid(){
-    grid.innerHTML = PRODUCTS.map(productCardHTML).join("");
+    const products = catalogProducts();
+    grid.innerHTML = products.map(productCardHTML).join("");
     applyFilters();
     bindCardEvents();
   }
@@ -97,7 +94,7 @@
   function renderPromoGrid(){
     const promoGrid = document.getElementById("promoGrid");
     if(!promoGrid) return;
-    const picks = PRODUCTS.filter(p=>p.badge).slice(0,4);
+    const picks = catalogProducts().filter(p=>p.badge).slice(0,4);
     promoGrid.innerHTML = picks.map(productCardHTML).join("");
     promoGrid.querySelectorAll(".card-order-btn").forEach(btn=>{
       btn.addEventListener("click", ()=> addToCart(btn.dataset.id));
@@ -278,7 +275,7 @@
   const modalBody = document.getElementById("modalBody");
 
   function openDetails(id){
-    const p = PRODUCTS.find(x=>x.id===id);
+    const p = catalogProducts().find(x=>x.id===id);
     if(!p || !p.details) return;
     const groups = p.details.groups.map(g => `
       <div class="modal-group">
@@ -317,10 +314,12 @@
   }
 
   function addToCart(id){
+    const product = catalogProducts().find(p=>p.id===id);
+    if(!product) return;
     cart[id] = (cart[id] || 0) + 1;
     saveCart();
     renderCart();
-    showToast(`${PRODUCTS.find(p=>p.id===id).name} ajouté au panier`);
+    showToast(`${product.name} ajouté au panier`);
     openCart();
   }
 
@@ -340,8 +339,9 @@
 
   function cartTotal(){
     let total = 0;
+    const products = catalogProducts();
     Object.keys(cart).forEach(id=>{
-      const p = PRODUCTS.find(x=>x.id===id);
+      const p = products.find(x=>x.id===id);
       if(p) total += priceToNumber(p.price) * cart[id];
     });
     return total;
@@ -365,7 +365,7 @@
     cartFoot.style.display = "block";
 
     cartItemsEl.innerHTML = ids.map(id=>{
-      const p = PRODUCTS.find(x=>x.id===id);
+      const p = catalogProducts().find(x=>x.id===id);
       if(!p) return "";
       const media = p.img ? `<img src="${p.img}" alt="${p.name}">` : ICONS[p.icon];
       return `
@@ -409,10 +409,11 @@
 
   document.getElementById("whatsappOrderBtn").addEventListener("click", ()=>{
     const ids = Object.keys(cart);
+    const products = catalogProducts();
     if(ids.length === 0) return;
     let lines = ["Bonjour DORCASHOP, je souhaite commander :"];
     ids.forEach(id=>{
-      const p = PRODUCTS.find(x=>x.id===id);
+      const p = products.find(x=>x.id===id);
       if(p) lines.push(`- ${p.name} x${cart[id]} (${p.price})`);
     });
     lines.push(`Total estimé : ${cartTotal().toLocaleString("fr-FR")} F`);

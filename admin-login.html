@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion administrateur | DORCASHOP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="admin-body">
+  <main class="admin-shell admin-shell-login">
+    <section class="admin-card admin-login-card" aria-label="Connexion administrateur">
+      <div class="admin-brand">
+        <img src="images/logo.png" alt="DORCASHOP logo" class="logo-image admin-logo">
+      </div>
+      <p class="admin-kicker">Accès réservé</p>
+      <h1>Connexion administrateur</h1>
+      <form id="adminLoginForm" class="admin-form" novalidate>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" placeholder="Entrez votre username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Mot de passe</label>
+          <div class="password-field">
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Entrez votre mot de passe" required>
+            <button type="button" class="password-toggle" aria-label="Afficher ou masquer le mot de passe">Afficher</button>
+          </div>
+        </div>
+
+        <div id="loginError" class="admin-message error" role="alert" aria-live="polite" hidden></div>
+
+        <button type="submit" class="btn btn-primary admin-submit">Se connecter</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
