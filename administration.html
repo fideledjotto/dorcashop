@@ -15,10 +15,21 @@
       <a href="index.html" class="brand-inline" aria-label="Retour à l'accueil">
         <img src="images/logo.png" alt="DORCASHOP logo" class="logo-image admin-brand-logo">
       </a>
-      <div class="topbar-actions">
+      <div class="topbar-actions desktop-actions">
         <a href="index.html" class="btn btn-outline btn-sm">Retour au site</a>
         <button type="button" id="logoutBtn" class="btn btn-primary btn-sm">Déconnexion</button>
       </div>
+
+      <button type="button" class="admin-menu-toggle" id="adminMenuToggle" aria-expanded="false" aria-controls="adminMobileMenu" aria-label="Ouvrir le menu administration">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="admin-mobile-menu" id="adminMobileMenu" aria-label="Menu administration">
+        <a href="index.html" class="btn btn-outline btn-sm">Retour au site</a>
+        <button type="button" id="logoutBtnMobile" class="btn btn-primary btn-sm">Déconnexion</button>
+      </nav>
     </div>
   </header>
 
@@ -26,7 +37,7 @@
     <section class="admin-dashboard">
       <div class="admin-header-row">
         <div>
-          <p class="admin-kicker">Administration</p>
+          
           <h1>Gérez les produits de votre boutique.</h1>
         </div>
       </div>

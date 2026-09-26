@@ -68,9 +68,31 @@
   const cancelEditBtn = document.getElementById("cancelEditBtn");
   const productCountBadge = document.getElementById("productCountBadge");
   const logoutBtn = document.getElementById("logoutBtn");
+  const logoutBtnMobile = document.getElementById("logoutBtnMobile");
+  const adminMenuToggle = document.getElementById("adminMenuToggle");
+  const adminMobileMenu = document.getElementById("adminMobileMenu");
   const confirmBackdrop = document.getElementById("adminConfirmBackdrop");
   const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
   const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+
+  const doLogout = () => {
+    store.logoutAdmin();
+    window.location.href = "admin-login.html";
+  };
+
+  if (adminMenuToggle && adminMobileMenu) {
+    adminMenuToggle.addEventListener("click", () => {
+      const isOpen = adminMobileMenu.classList.toggle("open");
+      adminMenuToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    adminMobileMenu.querySelectorAll("a, button").forEach((item) => {
+      item.addEventListener("click", () => {
+        adminMobileMenu.classList.remove("open");
+        adminMenuToggle.setAttribute("aria-expanded", "false");
+      });
+    });
+  }
 
   const state = {
     editingId: null,
@@ -269,10 +291,8 @@
     }
   });
 
-  logoutBtn.addEventListener("click", () => {
-    store.logoutAdmin();
-    window.location.href = "admin-login.html";
-  });
+  logoutBtn && logoutBtn.addEventListener("click", doLogout);
+  logoutBtnMobile && logoutBtnMobile.addEventListener("click", doLogout);
 
   renderProducts();
 })();
