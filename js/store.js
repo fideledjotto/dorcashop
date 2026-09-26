@@ -4,6 +4,7 @@
   const STORAGE_KEY = "dorcashop_products_v1";
   const DELETED_PRODUCTS_KEY = "dorcashop_deleted_products_v1";
   const ADMIN_SESSION_KEY = "dorcashop_admin_session_v1";
+  const CATALOG_CHANGED_KEY = "dorcashop_catalog_changed_v1";
   const DEMO_ADMIN = { username: "admin", password: "admin0" };
 
   function safeLocalStorageGet(key) {
@@ -61,7 +62,8 @@
       priceGros: product && product.priceGros ? product.priceGros : "",
       badge: product && product.badge ? product.badge : "",
       details: product && product.details ? product.details : null,
-      icon: product && product.icon ? product.icon : ""
+      icon: product && product.icon ? product.icon : "",
+      createdAt: product && product.createdAt ? Number(product.createdAt) : 0
     };
   }
 
@@ -87,8 +89,17 @@
     }
   }
 
+  function notifyCatalogChanged() {
+    const timestamp = String(Date.now());
+    safeLocalStorageSet(CATALOG_CHANGED_KEY, timestamp);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dorcashop:catalog-updated", { detail: { timestamp } }));
+    }
+  }
+
   function saveStoredProducts(products) {
     safeLocalStorageSet(STORAGE_KEY, JSON.stringify(products.map((product) => normalizeProduct(product))));
+    notifyCatalogChanged();
   }
 
   function getDeletedProductIds() {
@@ -129,7 +140,19 @@
       byId.set(String(product.id), normalizeProduct(product));
     });
 
-    return Array.from(byId.values());
+    return Array.from(byId.values()).sort((a, b) => {
+      const aTime = Number(a.createdAt || 0);
+      const bTime = Number(b.createdAt || 0);
+      return bTime - aTime;
+    });
+  }
+
+  function isRecentProduct(product, days = 30) {
+    const createdAt = Number(product && product.createdAt ? product.createdAt : 0);
+    if (!createdAt) {
+      return false;
+    }
+    return Date.now() - createdAt <= days * 24 * 60 * 60 * 1000;
   }
 
   function ensureProductId(product, fallback) {
@@ -139,7 +162,12 @@
   }
 
   function createProduct(input) {
-    const clean = ensureProductId(input, `custom-${Date.now()}`);
+    const createdAt = Date.now();
+    const clean = ensureProductId({
+      ...(input || {}),
+      createdAt,
+      badge: input && input.badge ? input.badge : "NOUVEAU"
+    }, `custom-${createdAt}`);
     const stored = getStoredProducts();
     stored.push(clean);
     saveStoredProducts(stored);
@@ -206,7 +234,8 @@
       gros: "#FFD400"
     }[p.cats[0]] || "#142343";
 
-    const badge = p.badge ? `<span class="card-badge badge-${p.badge.replace(/\s+/g, "")}">${p.badge}</span>` : "";
+    const badgeLabel = p.badge || (isRecentProduct(p) ? "NOUVEAU" : "");
+    const badge = badgeLabel ? `<span class="card-badge badge-${badgeLabel.replace(/\s+/g, "")}">${badgeLabel}</span>` : "";
     const detailsBtn = p.details ? `<button type="button" class="details-btn" data-id="${p.id}" aria-label="Voir les tarifs détaillés de ${p.name}">+</button>` : "";
     const media = p.img
       ? `<img src="${p.img}" alt="${p.name}" loading="lazy">`
@@ -259,6 +288,7 @@
     loginAdmin,
     logoutAdmin,
     isAdminAuthenticated,
+    isRecentProduct,
     buildProductCardMarkup
   };
 })();

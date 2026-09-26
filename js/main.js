@@ -131,6 +131,19 @@
   /* ---------------------------------------------------------
      Filtres + recherche
      --------------------------------------------------------- */
+  function refreshCatalogUI(){
+    renderGrid();
+    renderPromoGrid();
+    renderCart();
+  }
+
+  window.addEventListener("dorcashop:catalog-updated", refreshCatalogUI);
+  window.addEventListener("storage", (event) => {
+    if (event.key === "dorcashop_catalog_changed_v1") {
+      refreshCatalogUI();
+    }
+  });
+
   const filterBtns = document.querySelectorAll(".filter-btn");
   filterBtns.forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -433,6 +446,17 @@
     toastTimer = setTimeout(()=> toast.classList.remove("show"), 2400);
   }
 
+  function showStoredToastIfAny(){
+    try {
+      const message = window.localStorage.getItem("dorcashop_admin_toast_v1");
+      if (!message) return;
+      window.localStorage.removeItem("dorcashop_admin_toast_v1");
+      showToast(message);
+    } catch (error) {
+      // ignore storage restrictions
+    }
+  }
+
   /* ---------------------------------------------------------
      Menu mobile
      --------------------------------------------------------- */
@@ -471,4 +495,5 @@
   renderGrid();
   renderPromoGrid();
   renderCart();
+  showStoredToastIfAny();
 })();

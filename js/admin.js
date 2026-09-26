@@ -261,6 +261,11 @@
     }
 
     store.createProduct(payload);
+    try {
+      window.localStorage.setItem("dorcashop_admin_toast_v1", "Produit ajouté avec succès.");
+    } catch (error) {
+      // ignore storage restrictions
+    }
     setGlobalMessage("success", "Produit ajouté avec succès.");
     renderProducts();
     resetForm();
