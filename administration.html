@@ -46,6 +46,136 @@
 
       <section class="admin-panel">
         <div class="panel-head">
+          <h2>Tableau de bord</h2>
+        </div>
+
+        <div class="dashboard-stats">
+          <article class="stat-card stat-card-primary">
+            <span class="stat-label stat-label-pink">Produits</span>
+            <strong id="statTotalProducts" class="stat-value stat-value-navy">19</strong>
+            <span class="stat-trend stat-trend-navy">Catalogue total</span>
+          </article>
+
+          <article class="stat-card stat-card-secondary">
+            <span class="stat-label stat-label-pink">Catégories</span>
+            <strong id="statCategoryCount" class="stat-value stat-value-navy">5</strong>
+            <span class="stat-trend stat-trend-navy">Rayons actifs</span>
+          </article>
+
+          <article class="stat-card stat-card-success">
+            <span class="stat-label stat-label-pink">Nouveautés</span>
+            <strong id="statRecentProducts" class="stat-value stat-value-navy">1</strong>
+            <span class="stat-trend stat-trend-navy">30 derniers jours</span>
+          </article>
+
+          <article class="stat-card stat-card-warning">
+            <span class="stat-label stat-label-pink">Avec badge</span>
+            <strong id="statBadgeProducts" class="stat-value stat-value-navy">7</strong>
+            <span class="stat-trend stat-trend-navy">Promos &amp; best sellers</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="analytics-grid">
+        <article class="analytics-panel analytics-panel-wide">
+          <div class="panel-head panel-head-split">
+            <div>
+              <p class="eyebrow">Performance</p>
+              <h3>Visiteurs &amp; chiffre d'affaires</h3>
+            </div>
+            <span class="panel-badge">7 derniers jours</span>
+          </div>
+
+          <div class="chart-legend">
+            <span><i class="legend-dot visitors"></i>Visiteurs</span>
+            <span><i class="legend-dot revenue"></i>Chiffre d'affaires</span>
+          </div>
+
+          <svg id="revenueChartSvg" class="line-chart" viewBox="0 0 620 220" role="img" aria-label="Graphique des visiteurs et du chiffre d'affaires"></svg>
+        </article>
+
+        <article class="analytics-panel">
+          <div class="panel-head">
+            <p class="eyebrow">Conversion</p>
+            <h3>Activité</h3>
+          </div>
+
+          <div class="conversion-wrap">
+            <div id="conversionDonut" class="conversion-donut">
+              <span id="conversionRate">0%</span>
+            </div>
+          </div>
+
+          <ul class="mini-metrics">
+            <li>
+              <span>Visiteurs</span>
+              <strong id="metricVisitors">0</strong>
+            </li>
+            <li>
+              <span>Commandes</span>
+              <strong id="metricOrders">0</strong>
+            </li>
+            <li>
+              <span>CA</span>
+              <strong id="metricRevenue">0 FCFA</strong>
+            </li>
+          </ul>
+        </article>
+
+        <article class="analytics-panel">
+          <div class="panel-head">
+            <p class="eyebrow">Commandes</p>
+            <h3>Par journée</h3>
+          </div>
+          <div id="ordersBars" class="orders-bars"></div>
+        </article>
+
+        <article class="analytics-panel analytics-panel-wide">
+          <div class="panel-head">
+            <p class="eyebrow">Répartition</p>
+            <h3>Top catégories</h3>
+          </div>
+          <div id="categoryBars" class="category-bars"></div>
+        </article>
+      </section>
+
+      <section class="decision-grid">
+        <article class="analytics-panel">
+          <div class="panel-head panel-head-split">
+            <div>
+              <p class="eyebrow">Produits</p>
+              <h3>Top ventes</h3>
+            </div>
+            <span class="panel-badge">5 meilleurs</span>
+          </div>
+          <ul id="topProductsList" class="decision-list"></ul>
+        </article>
+
+        <article class="analytics-panel">
+          <div class="panel-head panel-head-split">
+            <div>
+              <p class="eyebrow">Surveillance</p>
+              <h3>À relancer</h3>
+            </div>
+            <span class="panel-badge">À revoir</span>
+          </div>
+          <ul id="watchlistProducts" class="decision-list decision-list-alert"></ul>
+        </article>
+
+        <article class="analytics-panel analytics-panel-wide">
+          <div class="panel-head panel-head-split">
+            <div>
+              <p class="eyebrow">Conseils</p>
+              <h3>Recommandations</h3>
+            </div>
+            <span class="panel-badge">Actions</span>
+          </div>
+          <ul id="decisionRecommendations" class="recommendations-list"></ul>
+        </article>
+      </section>
+
+      <section class="admin-panel">
+        <div class="panel-head">
           <h2>Ajouter un produit</h2>
         </div>
 
@@ -112,7 +242,25 @@
           <h2>Produits existants</h2>
           <span id="productCountBadge" class="panel-badge">0 produit(s)</span>
         </div>
+
+        <div class="admin-product-search-wrap">
+          <label for="adminProductSearch" class="sr-only">Rechercher un produit</label>
+          <input id="adminProductSearch" type="search" class="admin-product-search" placeholder="Rechercher un produit..." aria-label="Rechercher un produit">
+        </div>
+
         <div id="existingProductsList" class="existing-products-list"></div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="panel-head panel-head-split">
+          <h2>Corbeille</h2>
+          <span id="deletedProductCountBadge" class="panel-badge">0 élément(s)</span>
+        </div>
+        <div class="trash-actions">
+          <button type="button" id="restoreAllTrashBtn" class="btn btn-outline btn-sm">Restaurer tout</button>
+          <button type="button" id="clearTrashBtn" class="btn btn-primary btn-sm">Vider la corbeille</button>
+        </div>
+        <div id="deletedProductsList" class="deleted-products-list"></div>
       </section>
     </section>
   </main>
@@ -123,7 +271,7 @@
       <p>Voulez-vous vraiment supprimer ce produit ?</p>
       <div class="confirm-actions">
         <button type="button" id="cancelDeleteBtn" class="btn btn-outline">Annuler</button>
-        <button type="button" id="confirmDeleteBtn" class="btn btn-primary">Supprimer</button>
+        <button type="button" id="confirmDeleteBtn" class="btn btn-primary">Oui, supprimer</button>
       </div>
     </div>
   </div>

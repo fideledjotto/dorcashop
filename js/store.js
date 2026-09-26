@@ -3,8 +3,17 @@
 
   const STORAGE_KEY = "dorcashop_products_v1";
   const DELETED_PRODUCTS_KEY = "dorcashop_deleted_products_v1";
+  const TRASH_PRODUCTS_KEY = "dorcashop_trash_v1";
   const ADMIN_SESSION_KEY = "dorcashop_admin_session_v1";
   const CATALOG_CHANGED_KEY = "dorcashop_catalog_changed_v1";
+  const DASHBOARD_METRICS_KEY = "dorcashop_dashboard_metrics_v1";
+  const DASHBOARD_EVENTS_KEY = "dorcashop_dashboard_events_v1";
+  const DEFAULT_DASHBOARD_METRICS = {
+    visitors: 300,
+    orders: 50,
+    revenue: 100000,
+    conversion: 1.7
+  };
   const DEMO_ADMIN = { username: "admin", password: "admin0" };
 
   function safeLocalStorageGet(key) {
@@ -89,6 +98,37 @@
     }
   }
 
+  async function fetchJson(url, options = {}) {
+    try {
+      const response = await fetch(url, {
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        ...options
+      });
+
+      const text = await response.text();
+      const payload = text ? JSON.parse(text) : {};
+      return { ok: response.ok, status: response.status, payload };
+    } catch (error) {
+      return { ok: false, status: 0, payload: { message: String(error) } };
+    }
+  }
+
+  async function loadProductsFromServer() {
+    if (typeof fetch !== "function") {
+      return getStoredProducts();
+    }
+
+    const response = await fetchJson("/api/products");
+    if (!response.ok || !Array.isArray(response.payload.products)) {
+      return getStoredProducts();
+    }
+
+    const products = response.payload.products.map((product) => normalizeProduct(product));
+    safeLocalStorageSet(STORAGE_KEY, JSON.stringify(products));
+    notifyCatalogChanged();
+    return products;
+  }
+
   function notifyCatalogChanged() {
     const timestamp = String(Date.now());
     safeLocalStorageSet(CATALOG_CHANGED_KEY, timestamp);
@@ -100,6 +140,85 @@
   function saveStoredProducts(products) {
     safeLocalStorageSet(STORAGE_KEY, JSON.stringify(products.map((product) => normalizeProduct(product))));
     notifyCatalogChanged();
+  }
+
+  function getDashboardMetrics() {
+    const raw = safeLocalStorageGet(DASHBOARD_METRICS_KEY);
+    if (!raw) {
+      const initial = { ...DEFAULT_DASHBOARD_METRICS };
+      safeLocalStorageSet(DASHBOARD_METRICS_KEY, JSON.stringify(initial));
+      return initial;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_DASHBOARD_METRICS,
+        ...(parsed || {})
+      };
+    } catch (error) {
+      const initial = { ...DEFAULT_DASHBOARD_METRICS };
+      safeLocalStorageSet(DASHBOARD_METRICS_KEY, JSON.stringify(initial));
+      return initial;
+    }
+  }
+
+  function saveDashboardMetrics(metrics) {
+    const next = {
+      ...DEFAULT_DASHBOARD_METRICS,
+      ...(metrics || {})
+    };
+
+    next.visitors = Math.max(0, Number(next.visitors) || 0);
+    next.orders = Math.max(0, Number(next.orders) || 0);
+    next.revenue = Math.max(0, Number(next.revenue) || 0);
+    next.conversion = Number(next.conversion) || 0;
+    safeLocalStorageSet(DASHBOARD_METRICS_KEY, JSON.stringify(next));
+  }
+
+  function getDashboardEvents() {
+    const raw = safeLocalStorageGet(DASHBOARD_EVENTS_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function recordDashboardEvent(type, delta = {}) {
+    const metrics = getDashboardMetrics();
+    const next = {
+      visitors: Math.max(0, (Number(metrics.visitors) || 0) + (Number(delta.visitors) || 0)),
+      orders: Math.max(0, (Number(metrics.orders) || 0) + (Number(delta.orders) || 0)),
+      revenue: Math.max(0, (Number(metrics.revenue) || 0) + (Number(delta.revenue) || 0)),
+      conversion: Number(delta.conversion) || 0
+    };
+
+    if (!next.conversion && next.visitors > 0) {
+      next.conversion = (next.orders / next.visitors) * 100;
+    }
+
+    saveDashboardMetrics(next);
+
+    const event = {
+      type,
+      timestamp: Date.now(),
+      ...delta
+    };
+
+    const history = getDashboardEvents();
+    history.push(event);
+    if (history.length > 25) {
+      history.splice(0, history.length - 25);
+    }
+    safeLocalStorageSet(DASHBOARD_EVENTS_KEY, JSON.stringify(history));
+
+    return next;
   }
 
   function getDeletedProductIds() {
@@ -116,12 +235,33 @@
     }
   }
 
+  function getDeletedProductRecords() {
+    const raw = safeLocalStorageGet(TRASH_PRODUCTS_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((item) => item && (item.id || item.product)) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
   function saveDeletedProductIds(ids) {
     safeLocalStorageSet(DELETED_PRODUCTS_KEY, JSON.stringify(Array.from(new Set(ids.map(String)))));
   }
 
+  function saveDeletedProductRecords(records) {
+    safeLocalStorageSet(TRASH_PRODUCTS_KEY, JSON.stringify(records.filter(Boolean)));
+  }
+
   function resolveCatalogProducts() {
-    const deletedIds = new Set(getDeletedProductIds());
+    const deletedIds = new Set([
+      ...getDeletedProductIds(),
+      ...getDeletedProductRecords().map((record) => String(record.id || record.product?.id || ""))
+    ].filter(Boolean));
     const defaults = getDefaultProducts().filter((product) => !deletedIds.has(String(product.id)));
     const stored = getStoredProducts().filter((product) => !deletedIds.has(String(product.id)));
     const byId = new Map();
@@ -161,23 +301,44 @@
     return item;
   }
 
-  function createProduct(input) {
+  async function createProduct(input) {
     const createdAt = Date.now();
     const clean = ensureProductId({
       ...(input || {}),
       createdAt,
       badge: input && input.badge ? input.badge : "NOUVEAU"
     }, `custom-${createdAt}`);
+
     const stored = getStoredProducts();
     stored.push(clean);
     saveStoredProducts(stored);
+
+    if (typeof fetch === "function") {
+      try {
+        const response = await fetchJson("/api/products", {
+          method: "POST",
+          body: JSON.stringify(clean)
+        });
+
+        if (response.ok && response.payload && response.payload.product) {
+          const serverProduct = normalizeProduct(response.payload.product);
+          const nextStored = getStoredProducts().filter((product) => String(product.id) !== String(serverProduct.id));
+          nextStored.unshift(serverProduct);
+          saveStoredProducts(nextStored);
+          return serverProduct;
+        }
+      } catch (error) {
+        // keep the local fallback when the backend is unavailable
+      }
+    }
+
     return clean;
   }
 
-  function updateProduct(id, updates) {
+  async function updateProduct(id, updates) {
     const current = resolveCatalogProducts().find((product) => String(product.id) === String(id));
-    const stored = getStoredProducts();
     const next = normalizeProduct({ ...(current || {}), ...updates, id }, id);
+    const stored = getStoredProducts();
     const index = stored.findIndex((product) => String(product.id) === String(id));
 
     if (index === -1) {
@@ -187,18 +348,144 @@
     }
 
     saveStoredProducts(stored);
+
+    if (typeof fetch === "function") {
+      try {
+        const response = await fetchJson(`/api/products/${encodeURIComponent(String(id))}`, {
+          method: "PUT",
+          body: JSON.stringify(next)
+        });
+
+        if (response.ok && response.payload && response.payload.product) {
+          const serverProduct = normalizeProduct(response.payload.product);
+          const nextStored = getStoredProducts().map((product) => String(product.id) === String(serverProduct.id) ? serverProduct : product);
+          saveStoredProducts(nextStored);
+          return serverProduct;
+        }
+      } catch (error) {
+        // keep the local fallback when the backend is unavailable
+      }
+    }
+
     return next;
   }
 
-  function deleteProduct(id) {
+  function getTrashProducts() {
+    const records = getDeletedProductRecords();
+    const deletedIds = new Set(getDeletedProductIds());
+    const fallbackProducts = [...getDefaultProducts(), ...getStoredProducts()].filter((product) => {
+      if (!product || !product.id) {
+        return false;
+      }
+      return deletedIds.has(String(product.id));
+    });
+
+    const productsById = new Map();
+    records.forEach((record) => {
+      const product = record && record.product ? normalizeProduct(record.product) : null;
+      if (product && product.id) {
+        productsById.set(String(product.id), product);
+      }
+    });
+
+    fallbackProducts.forEach((product) => {
+      if (product && product.id && !productsById.has(String(product.id))) {
+        productsById.set(String(product.id), normalizeProduct(product));
+      }
+    });
+
+    return Array.from(productsById.values()).map((product) => {
+      const record = records.find((item) => String((item && (item.id || item.product?.id)) || "") === String(product.id));
+      return {
+        ...product,
+        deletedAt: record && record.deletedAt ? record.deletedAt : Date.now()
+      };
+    }).sort((a, b) => Number(b.deletedAt || 0) - Number(a.deletedAt || 0));
+  }
+
+  async function deleteProduct(id) {
+    const product = resolveCatalogProducts().find((item) => String(item.id) === String(id))
+      || [...getDefaultProducts(), ...getStoredProducts()].find((item) => String(item.id) === String(id));
+
     const deletedIds = getDeletedProductIds();
     if (!deletedIds.includes(String(id))) {
       deletedIds.push(String(id));
       saveDeletedProductIds(deletedIds);
     }
 
-    const stored = getStoredProducts().filter((product) => String(product.id) !== String(id));
+    const records = getDeletedProductRecords();
+    const alreadyTrashed = records.some((record) => String(record.id || record.product?.id || "") === String(id));
+    if (!alreadyTrashed) {
+      records.push({
+        id: String(id),
+        product: product ? normalizeProduct(product) : null,
+        deletedAt: Date.now()
+      });
+      saveDeletedProductRecords(records);
+    }
+
+    const stored = getStoredProducts().filter((productItem) => String(productItem.id) !== String(id));
     saveStoredProducts(stored);
+
+    if (typeof fetch === "function") {
+      try {
+        await fetchJson(`/api/products/${encodeURIComponent(String(id))}`, {
+          method: "DELETE"
+        });
+      } catch (error) {
+        // ignore backend delete failures and keep the local fallback
+      }
+    }
+
+    return true;
+  }
+
+  function restoreDeletedProduct(id) {
+    const records = getDeletedProductRecords().filter((record) => String(record.id || record.product?.id || "") !== String(id));
+    saveDeletedProductRecords(records);
+
+    const deletedIds = getDeletedProductIds().filter((deletedId) => String(deletedId) !== String(id));
+    saveDeletedProductIds(deletedIds);
+
+    const product = [...getDefaultProducts(), ...getStoredProducts(), ...records.map((record) => record.product).filter(Boolean)].find((item) => String(item.id) === String(id));
+    if (product) {
+      const stored = getStoredProducts();
+      if (!stored.some((item) => String(item.id) === String(id))) {
+        stored.push(normalizeProduct(product));
+        saveStoredProducts(stored);
+      }
+    }
+
+    return true;
+  }
+
+  function restoreAllDeletedProducts() {
+    const ids = getDeletedProductIds();
+    const records = getDeletedProductRecords();
+    const allIds = Array.from(new Set([
+      ...ids,
+      ...records.map((record) => String(record.id || record.product?.id || ""))
+    ].filter(Boolean)));
+
+    const restored = [];
+    const stored = getStoredProducts();
+    allIds.forEach((id) => {
+      const product = [...getDefaultProducts(), ...stored, ...records.map((record) => record.product).filter(Boolean)].find((item) => String(item.id) === String(id));
+      if (product && !stored.some((item) => String(item.id) === String(id))) {
+        stored.push(normalizeProduct(product));
+        restored.push(id);
+      }
+    });
+
+    saveStoredProducts(stored);
+    saveDeletedProductIds([]);
+    saveDeletedProductRecords([]);
+    return { restored };
+  }
+
+  function clearTrash() {
+    saveDeletedProductIds([]);
+    saveDeletedProductRecords([]);
     return true;
   }
 
@@ -214,6 +501,22 @@
 
     safeLocalStorageRemove(ADMIN_SESSION_KEY);
     return false;
+  }
+
+  async function loginAdminAsync(username, password) {
+    if (typeof fetch === "function") {
+      const response = await fetchJson("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password })
+      });
+
+      if (response.ok && response.payload.success) {
+        safeLocalStorageSet(ADMIN_SESSION_KEY, "authenticated");
+        return true;
+      }
+    }
+
+    return loginAdmin(username, password);
   }
 
   function logoutAdmin() {
@@ -282,13 +585,23 @@
     normalizeProduct,
     resolveCatalogProducts,
     getCatalogProducts: resolveCatalogProducts,
+    getTrashProducts,
     createProduct,
     updateProduct,
     deleteProduct,
+    restoreDeletedProduct,
+    restoreAllDeletedProducts,
+    clearTrash,
     loginAdmin,
     logoutAdmin,
     isAdminAuthenticated,
     isRecentProduct,
-    buildProductCardMarkup
+    loadProductsFromServer,
+    loginAdminAsync,
+    buildProductCardMarkup,
+    getDashboardMetrics,
+    saveDashboardMetrics,
+    recordDashboardEvent,
+    getDashboardEvents
   };
 })();

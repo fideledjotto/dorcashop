@@ -1,0 +1,59 @@
+[
+  {
+    "id": "lampe-rechargeable",
+    "name": "Lampe rechargeable à batterie",
+    "category": "maison",
+    "cats": [
+      "maison"
+    ],
+    "img": "images/ampoule-rechargeable.jpg",
+    "desc": "Idéale en cas de coupure de courant, longue autonomie.",
+    "price": "2 000 F",
+    "oldPrice": "",
+    "priceNote": "l'unité",
+    "priceGros": "",
+    "badge": "BON PLAN",
+    "details": null,
+    "icon": "",
+    "createdAt": 1700000200000
+  },
+  {
+    "id": "bics-simples",
+    "name": "Bics simples",
+    "category": "fournitures",
+    "cats": [
+      "fournitures",
+      "etudiants",
+      "gros"
+    ],
+    "img": "images/bics-simples.jpg",
+    "desc": "Stylos à bille pour l'école et le bureau, disponibles en gros volume.",
+    "price": "À partir de 2 500 F",
+    "oldPrice": "",
+    "priceNote": "le paquet",
+    "priceGros": "",
+    "badge": "GROS",
+    "details": null,
+    "icon": "",
+    "createdAt": 1700000100000
+  },
+  {
+    "id": "cahiers-simples",
+    "name": "Cahiers simples",
+    "category": "fournitures",
+    "cats": [
+      "fournitures",
+      "etudiants"
+    ],
+    "img": "images/cahiers-simples.jpg",
+    "desc": "Disponibles en 100, 200 et 300 pages. Vendus à l'unité, au paquet ou au carton.",
+    "price": "À partir de 1 200 F",
+    "oldPrice": "",
+    "priceNote": "le paquet",
+    "priceGros": "",
+    "badge": "GROS",
+    "details": null,
+    "icon": "",
+    "createdAt": 1700000000000
+  }
+]

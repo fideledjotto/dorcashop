@@ -47,6 +47,18 @@
   function localStorageSafeGet(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } }
   function localStorageSafeSet(k,v){ try{ window.localStorage.setItem(k,v); }catch(e){ /* silencieux */ } }
 
+  async function syncCatalogFromServer(){
+    if (!window.DORCASHOPStore || typeof window.DORCASHOPStore.loadProductsFromServer !== "function") {
+      return;
+    }
+
+    try {
+      await window.DORCASHOPStore.loadProductsFromServer();
+    } catch (error) {
+      // ignore server sync failures and keep the local catalog as fallback
+    }
+  }
+
   /* ---------------------------------------------------------
      Rendu des cartes produit
      --------------------------------------------------------- */
@@ -492,6 +504,7 @@
   /* ---------------------------------------------------------
      Init
      --------------------------------------------------------- */
+  syncCatalogFromServer();
   renderGrid();
   renderPromoGrid();
   renderCart();
