@@ -5,6 +5,7 @@
   const DELETED_PRODUCTS_KEY = "dorcashop_deleted_products_v1";
   const TRASH_PRODUCTS_KEY = "dorcashop_trash_v1";
   const ADMIN_SESSION_KEY = "dorcashop_admin_session_v1";
+  const CLIENT_SESSION_KEY = "dorcashop_client_session_v1";
   const CATALOG_CHANGED_KEY = "dorcashop_catalog_changed_v1";
   const DASHBOARD_METRICS_KEY = "dorcashop_dashboard_metrics_v1";
   const DASHBOARD_EVENTS_KEY = "dorcashop_dashboard_events_v1";
@@ -15,6 +16,11 @@
     conversion: 1.7
   };
   const DEMO_ADMIN = { username: "admin", password: "admin0" };
+
+  function apiUrl(path) {
+    const basePath = new URL(".", document.baseURI).pathname.replace(/\/$/, "");
+    return `${basePath}/api/${String(path).replace(/^\/+/, "")}`;
+  }
 
   function safeLocalStorageGet(key) {
     try {
@@ -118,7 +124,7 @@
       return getStoredProducts();
     }
 
-    const response = await fetchJson("/api/products");
+    const response = await fetchJson(apiUrl("products"));
     if (!response.ok || !Array.isArray(response.payload.products)) {
       return getStoredProducts();
     }
@@ -140,6 +146,24 @@
   function saveStoredProducts(products) {
     safeLocalStorageSet(STORAGE_KEY, JSON.stringify(products.map((product) => normalizeProduct(product))));
     notifyCatalogChanged();
+  }
+
+  function trackSiteVisit(visitorId) {
+    return fetchJson(apiUrl("analytics/visit"), {
+      method: "POST",
+      body: JSON.stringify({ visitorId })
+    });
+  }
+
+  function trackOrderIntent(visitorId, itemCount, amount) {
+    return fetchJson(apiUrl("analytics/order-intent"), {
+      method: "POST",
+      body: JSON.stringify({ visitorId, itemCount, amount })
+    });
+  }
+
+  function getAdminAnalytics() {
+    return fetchJson(apiUrl("analytics"));
   }
 
   function getDashboardMetrics() {
@@ -315,7 +339,7 @@
 
     if (typeof fetch === "function") {
       try {
-        const response = await fetchJson("/api/products", {
+        const response = await fetchJson(apiUrl("products"), {
           method: "POST",
           body: JSON.stringify(clean)
         });
@@ -351,7 +375,7 @@
 
     if (typeof fetch === "function") {
       try {
-        const response = await fetchJson(`/api/products/${encodeURIComponent(String(id))}`, {
+        const response = await fetchJson(apiUrl(`products/${encodeURIComponent(String(id))}`), {
           method: "PUT",
           body: JSON.stringify(next)
         });
@@ -429,7 +453,7 @@
 
     if (typeof fetch === "function") {
       try {
-        await fetchJson(`/api/products/${encodeURIComponent(String(id))}`, {
+        await fetchJson(apiUrl(`products/${encodeURIComponent(String(id))}`), {
           method: "DELETE"
         });
       } catch (error) {
@@ -496,6 +520,7 @@
 
     if (success) {
       safeLocalStorageSet(ADMIN_SESSION_KEY, "authenticated");
+      safeLocalStorageRemove(CLIENT_SESSION_KEY);
       return true;
     }
 
@@ -504,23 +529,76 @@
   }
 
   async function loginAdminAsync(username, password) {
-    if (typeof fetch === "function") {
-      const response = await fetchJson("/api/login", {
-        method: "POST",
-        body: JSON.stringify({ username, password })
-      });
+    const result = await authenticateAccount(username, password);
+    return result.success && result.role === "admin";
+  }
 
-      if (response.ok && response.payload.success) {
-        safeLocalStorageSet(ADMIN_SESSION_KEY, "authenticated");
-        return true;
-      }
+  function saveAccountSession(account) {
+    if (account && account.role === "admin") {
+      safeLocalStorageSet(ADMIN_SESSION_KEY, "authenticated");
+      safeLocalStorageRemove(CLIENT_SESSION_KEY);
+      return;
     }
 
-    return loginAdmin(username, password);
+    safeLocalStorageRemove(ADMIN_SESSION_KEY);
+    safeLocalStorageSet(CLIENT_SESSION_KEY, JSON.stringify(account));
+  }
+
+  async function authenticateAccount(identifier, password) {
+    const response = await fetchJson(apiUrl("login"), {
+      method: "POST",
+      body: JSON.stringify({ identifier: String(identifier || "").trim(), password: String(password || "") })
+    });
+
+    if (!response.ok || !response.payload.success) {
+      return { success: false, message: response.payload.message || "Identifiants incorrects." };
+    }
+
+    saveAccountSession(response.payload.account);
+    return response.payload;
+  }
+
+  async function registerAccount(input) {
+    const response = await fetchJson(apiUrl("register"), {
+      method: "POST",
+      body: JSON.stringify(input || {})
+    });
+
+    if (response.ok && response.payload.success) {
+      saveAccountSession(response.payload.account);
+    }
+
+    return response.payload;
+  }
+
+  async function getAccountSession() {
+    const response = await fetchJson(apiUrl("session"));
+    if (response.ok && response.payload.authenticated && response.payload.account) {
+      saveAccountSession(response.payload.account);
+      return response.payload;
+    }
+
+    safeLocalStorageRemove(ADMIN_SESSION_KEY);
+    safeLocalStorageRemove(CLIENT_SESSION_KEY);
+    return { authenticated: false, account: null };
+  }
+
+  function isAccountAuthenticated() {
+    return isAdminAuthenticated() || Boolean(safeLocalStorageGet(CLIENT_SESSION_KEY));
+  }
+
+  async function logoutAccount() {
+    const response = await fetchJson(apiUrl("logout"), { method: "POST" });
+    if (!response.ok || !response.payload.success) {
+      return false;
+    }
+    safeLocalStorageRemove(ADMIN_SESSION_KEY);
+    safeLocalStorageRemove(CLIENT_SESSION_KEY);
+    return true;
   }
 
   function logoutAdmin() {
-    safeLocalStorageRemove(ADMIN_SESSION_KEY);
+    return logoutAccount();
   }
 
   function isAdminAuthenticated() {
@@ -561,7 +639,7 @@
           ${media}
         </div>
         <div class="card-body">
-          <h4>${p.name}</h4>
+          <h3>${p.name}</h3>
           <p class="card-desc">${p.desc || "Produit de la boutique DORCASHOP."}</p>
           <div class="card-price-row">
             <div>
@@ -595,8 +673,16 @@
     loginAdmin,
     logoutAdmin,
     isAdminAuthenticated,
+    authenticateAccount,
+    registerAccount,
+    getAccountSession,
+    isAccountAuthenticated,
+    logoutAccount,
     isRecentProduct,
     loadProductsFromServer,
+    trackSiteVisit,
+    trackOrderIntent,
+    getAdminAnalytics,
     loginAdminAsync,
     buildProductCardMarkup,
     getDashboardMetrics,

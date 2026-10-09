@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Connexion administrateur | DORCASHOP</title>
+  <meta name="robots" content="noindex, nofollow">
+  <title>Connexion | DORCASHOP</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -11,23 +12,26 @@
 </head>
 <body class="admin-body">
   <main class="admin-shell admin-shell-login">
-    <section class="admin-card admin-login-card" aria-label="Connexion administrateur">
+    <section class="admin-card admin-login-card" aria-label="Connexion DORCASHOP">
       <div class="admin-brand">
         <img src="images/logo.png" alt="DORCASHOP logo" class="logo-image admin-logo">
       </div>
-      <p class="admin-kicker">Acces reserve</p>
-      <h1>Connexion administrateur</h1>
+      <p class="admin-kicker">Votre compte DORCASHOP</p>
+      <h1>Se connecter</h1>
       <form id="adminLoginForm" class="admin-form" novalidate>
         <div class="form-group">
-          <label for="username">Username</label>
-          <input id="username" name="username" type="text" autocomplete="username" placeholder="Entrez votre username" required>
+          <label for="username">E-mail ou identifiant</label>
+          <input id="username" name="username" type="text" autocomplete="username" placeholder="Votre e-mail ou identifiant" required>
         </div>
 
         <div class="form-group">
           <label for="password">Mot de passe</label>
           <div class="password-field">
             <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Entrez votre mot de passe" required>
-            <button type="button" class="password-toggle" aria-label="Afficher ou masquer le mot de passe">Afficher</button>
+            <button type="button" class="password-toggle" aria-label="Afficher le mot de passe" aria-pressed="false" title="Afficher le mot de passe">
+              <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a15.8 15.8 0 0 1-3.1 3.9M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1.1 0 2.2-.2 3.1-.6"/></svg>
+            </button>
           </div>
         </div>
 
@@ -35,6 +39,7 @@
 
         <button type="submit" class="btn btn-primary admin-submit">Se connecter</button>
       </form>
+      <p class="account-login-switch">Pas encore de compte ? <a href="index.html#inscription">Créer un compte</a></p>
     </section>
   </main>
 

@@ -3,6 +3,7 @@
 
   const WHATSAPP_NUMBER = "22947136292"; // 01 47 13 62 92 au format international
   const CART_KEY = "dorcashop_cart_v1";
+  const VISITOR_ID_KEY = "dorcashop_visitor_id_v1";
 
   /* ---------------------------------------------------------
      Icones sobres (remplacent une photo quand aucune n'a ete fournie)
@@ -33,6 +34,13 @@
   const grid = document.getElementById("productGrid");
   const noResults = document.getElementById("noResults");
   const catalogProducts = () => window.DORCASHOPStore ? window.DORCASHOPStore.getCatalogProducts() : PRODUCTS;
+  const familyCarouselRefreshers = [];
+
+  function newestFamilyPhoto(family) {
+    return catalogProducts()
+      .filter(product => product.img && (product.cats || [product.category]).includes(family))
+      .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0))[0] || null;
+  }
 
   function loadCart(){
     try{
@@ -46,6 +54,21 @@
   // Artifacts-safe wrapper: localStorage may be unavailable in some previews.
   function localStorageSafeGet(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } }
   function localStorageSafeSet(k,v){ try{ window.localStorage.setItem(k,v); }catch(e){ /* silencieux */ } }
+
+  function getVisitorId(){
+    let visitorId = localStorageSafeGet(VISITOR_ID_KEY);
+    if (visitorId) return visitorId;
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      visitorId = window.crypto.randomUUID();
+    } else {
+      visitorId = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, char => {
+        const random = Math.random() * 16 | 0;
+        return (char === "x" ? random : (random & 3 | 8)).toString(16);
+      });
+    }
+    localStorageSafeSet(VISITOR_ID_KEY, visitorId);
+    return visitorId;
+  }
 
   async function syncCatalogFromServer(){
     if (!window.DORCASHOPStore || typeof window.DORCASHOPStore.loadProductsFromServer !== "function") {
@@ -81,7 +104,7 @@
         ${cardMedia(p)}
       </div>
       <div class="card-body">
-        <h4>${p.name}</h4>
+        <h3>${p.name}</h3>
         <p class="card-desc">${p.desc}</p>
         <div class="card-price-row">
           <div>
@@ -147,6 +170,11 @@
     renderGrid();
     renderPromoGrid();
     renderCart();
+    refreshFamilyFeaturedImages();
+  }
+
+  function refreshFamilyFeaturedImages(){
+    familyCarouselRefreshers.forEach(refresh => refresh());
   }
 
   window.addEventListener("dorcashop:catalog-updated", refreshCatalogUI);
@@ -185,11 +213,173 @@
     applyFilters();
   });
 
+  const accountBackdrop = document.getElementById("accountBackdrop");
+  const accountLoginTab = document.getElementById("accountLoginTab");
+  const accountRegisterTab = document.getElementById("accountRegisterTab");
+  const accountLoginForm = document.getElementById("accountLoginForm");
+  const accountRegisterForm = document.getElementById("accountRegisterForm");
+  const accountDialogTitle = document.getElementById("accountDialogTitle");
+  const accountLink = document.getElementById("accountLink");
+  const accountPromptKey = "dorcashop_account_prompt_seen_v1";
+
+  function setAccountMode(mode){
+    const isRegister = mode === "register";
+    accountLoginForm.hidden = isRegister;
+    accountRegisterForm.hidden = !isRegister;
+    accountLoginTab.classList.toggle("active", !isRegister);
+    accountRegisterTab.classList.toggle("active", isRegister);
+    accountLoginTab.setAttribute("aria-selected", String(!isRegister));
+    accountRegisterTab.setAttribute("aria-selected", String(isRegister));
+    accountDialogTitle.textContent = isRegister ? "Créer un compte" : "Se connecter";
+  }
+
+  function openAccountDialog(mode = "login"){
+    setAccountMode(mode);
+    accountBackdrop.classList.add("open");
+    accountBackdrop.setAttribute("aria-hidden", "false");
+    try { sessionStorage.setItem(accountPromptKey, "1"); } catch (error) {}
+    requestAnimationFrame(() => (mode === "register" ? document.getElementById("accountName") : document.getElementById("accountIdentifier")).focus());
+  }
+
+  function closeAccountDialog(){
+    accountBackdrop.classList.remove("open");
+    accountBackdrop.setAttribute("aria-hidden", "true");
+    if (window.location.hash === "#connexion" || window.location.hash === "#inscription") {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+  }
+
+  function updateAccountLink(isAuthenticated){
+    accountSessionAuthenticated = Boolean(isAuthenticated);
+    accountLink.textContent = accountSessionAuthenticated ? "Se déconnecter" : "Se connecter";
+    accountLink.href = accountSessionAuthenticated ? "#deconnexion" : "#connexion";
+    accountLink.setAttribute("aria-label", accountLink.textContent);
+  }
+
+  accountLink.addEventListener("click", async event => {
+    event.preventDefault();
+    if (!accountSessionReady) {
+      const session = await window.DORCASHOPStore.getAccountSession();
+      accountSessionReady = true;
+      updateAccountLink(session.authenticated);
+    }
+
+    if (!accountSessionAuthenticated) {
+      openAccountDialog();
+      return;
+    }
+
+    accountLink.setAttribute("aria-busy", "true");
+    const loggedOut = await window.DORCASHOPStore.logoutAccount();
+    accountLink.removeAttribute("aria-busy");
+    if (loggedOut) updateAccountLink(false);
+  });
+  document.getElementById("closeAccountDialog").addEventListener("click", closeAccountDialog);
+  accountLoginTab.addEventListener("click", () => setAccountMode("login"));
+  accountRegisterTab.addEventListener("click", () => setAccountMode("register"));
+  accountBackdrop.addEventListener("click", event => {
+    if (event.target === accountBackdrop) closeAccountDialog();
+  });
+  accountBackdrop.querySelectorAll(".password-toggle").forEach(toggle => {
+    toggle.addEventListener("click", () => {
+      const input = toggle.closest(".password-field").querySelector("input");
+      const isVisible = input.type === "password";
+      input.type = isVisible ? "text" : "password";
+      toggle.setAttribute("aria-pressed", String(isVisible));
+      toggle.setAttribute("aria-label", `${isVisible ? "Masquer" : "Afficher"} le mot de passe`);
+      toggle.title = `${isVisible ? "Masquer" : "Afficher"} le mot de passe`;
+    });
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && accountBackdrop.classList.contains("open")) closeAccountDialog();
+  });
+
+  accountLoginForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const errorBox = document.getElementById("accountLoginError");
+    const submitButton = accountLoginForm.querySelector("[type='submit']");
+    errorBox.hidden = true;
+    submitButton.disabled = true;
+    const result = await window.DORCASHOPStore.authenticateAccount(
+      document.getElementById("accountIdentifier").value,
+      document.getElementById("accountPassword").value
+    );
+    submitButton.disabled = false;
+    if (!result.success) {
+      errorBox.textContent = result.message || "Identifiants incorrects.";
+      errorBox.hidden = false;
+      return;
+    }
+    window.location.href = result.role === "admin" ? "administration.html" : "client.html";
+  });
+
+  accountRegisterForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const errorBox = document.getElementById("accountRegisterError");
+    const submitButton = accountRegisterForm.querySelector("[type='submit']");
+    const password = document.getElementById("accountNewPassword").value;
+    const passwordConfirm = document.getElementById("accountPasswordConfirm").value;
+    errorBox.hidden = true;
+    if (password !== passwordConfirm) {
+      errorBox.textContent = "Les mots de passe ne correspondent pas.";
+      errorBox.hidden = false;
+      return;
+    }
+
+    submitButton.disabled = true;
+    const result = await window.DORCASHOPStore.registerAccount({
+      name: document.getElementById("accountName").value,
+      email: document.getElementById("accountEmail").value,
+      password
+    });
+    submitButton.disabled = false;
+    if (!result.success) {
+      errorBox.textContent = result.message || "La création du compte a échoué.";
+      errorBox.hidden = false;
+      return;
+    }
+    window.location.href = "client.html";
+  });
+
+  document.getElementById("accountLoginError").hidden = true;
+  document.getElementById("accountRegisterError").hidden = true;
+  if (window.location.hash === "#connexion" || window.location.hash === "#inscription") {
+    openAccountDialog(window.location.hash === "#inscription" ? "register" : "login");
+  }
+
+  let accountPromptShown = false;
+  let accountSessionReady = false;
+  let accountSessionAuthenticated = false;
+
+  function maybePromptForAccount(){
+    if (accountPromptShown || !accountSessionReady || accountSessionAuthenticated || window.scrollY < 140) return;
+    try {
+      if (sessionStorage.getItem(accountPromptKey)) return;
+    } catch (error) {}
+    accountPromptShown = true;
+    openAccountDialog();
+  }
+
+  window.addEventListener("scroll", maybePromptForAccount, { passive: true });
+  window.DORCASHOPStore.getAccountSession().then(session => {
+    accountSessionReady = true;
+    updateAccountLink(session.authenticated);
+    maybePromptForAccount();
+    if (session.account?.role !== "admin") {
+      window.DORCASHOPStore.trackSiteVisit(getVisitorId());
+    }
+  });
+
   /* ---------------------------------------------------------
      Images de famille défilables manuellement par balayage
      --------------------------------------------------------- */
   document.querySelectorAll(".cat-card[data-images]").forEach((card)=>{
-    const images = (card.dataset.images || "").split("|").map(s => s.trim()).filter(Boolean);
+    const baseImages = (card.dataset.images || "").split("|").map(s => s.trim()).filter(Boolean);
+    const familyName = card.querySelector("h3")?.textContent || "";
+    const featuredProduct = newestFamilyPhoto(card.dataset.jumpFilter);
+    const images = featuredProduct
+      ? [featuredProduct.img, ...baseImages.filter(src => src !== featuredProduct.img)]
+      : baseImages;
     if (images.length < 2) return;
 
     const imgWrap = card.querySelector(".img-wrap");
@@ -200,8 +390,10 @@
 
     const slides = images.map((src, index)=>{
       const img = new Image();
+      img.loading = index === 0 ? "eager" : "lazy";
+      img.decoding = "async";
       img.src = src;
-      img.alt = card.querySelector("h3")?.textContent || "";
+      img.alt = index === 0 && featuredProduct ? featuredProduct.name : familyName;
       img.className = index === 0 ? "active" : "";
       img.style.opacity = index === 0 ? "1" : "0";
       img.style.transform = index === 0 ? "none" : "translateX(18px)";
@@ -222,6 +414,13 @@
       });
       activeIndex = index;
     };
+
+    familyCarouselRefreshers.push(() => {
+      const latestProduct = newestFamilyPhoto(card.dataset.jumpFilter);
+      slides[0].src = latestProduct ? latestProduct.img : baseImages[0];
+      slides[0].alt = latestProduct ? latestProduct.name : familyName;
+      showSlide(0);
+    });
 
     const handleSwipe = (startX, endX) => {
       const deltaX = endX - startX;
@@ -392,12 +591,12 @@
     cartItemsEl.innerHTML = ids.map(id=>{
       const p = catalogProducts().find(x=>x.id===id);
       if(!p) return "";
-      const media = p.img ? `<img src="${p.img}" alt="${p.name}">` : ICONS[p.icon];
+      const media = p.img ? `<img src="${p.img}" alt="${p.name}" loading="lazy">` : ICONS[p.icon];
       return `
       <div class="cart-item" data-id="${id}">
         <div class="thumb">${media}</div>
         <div class="info">
-          <h5>${p.name}</h5>
+          <h4>${p.name}</h4>
           <span>${p.price}</span>
           <div class="qty-stepper">
             <button class="qty-minus" aria-label="Diminuer la quantité">&minus;</button>
@@ -441,8 +640,12 @@
       const p = products.find(x=>x.id===id);
       if(p) lines.push(`- ${p.name} x${cart[id]} (${p.price})`);
     });
-    lines.push(`Total estimé : ${cartTotal().toLocaleString("fr-FR")} F`);
+    const estimatedTotal = cartTotal();
+    lines.push(`Total estimé : ${estimatedTotal.toLocaleString("fr-FR")} F`);
     const message = encodeURIComponent(lines.join("\n"));
+    if (window.DORCASHOPStore.trackOrderIntent) {
+      window.DORCASHOPStore.trackOrderIntent(getVisitorId(), cartCount(), estimatedTotal);
+    }
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, "_blank");
   });
 

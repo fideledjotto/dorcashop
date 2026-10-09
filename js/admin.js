@@ -7,59 +7,61 @@
   }
 
   const loginForm = document.getElementById("adminLoginForm");
+
   if (loginForm) {
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
     const errorBox = document.getElementById("loginError");
     const toggleButton = document.querySelector(".password-toggle");
 
-    if (store.isAdminAuthenticated()) {
-      window.location.href = "administration.html";
-      return;
-    }
+    store.getAccountSession().then((session) => {
+      if (!session.authenticated || !session.account) return;
+      window.location.href = session.account.role === "admin" ? "administration.html" : "client.html";
+    });
 
     toggleButton && toggleButton.addEventListener("click", () => {
       const isPassword = passwordInput.type === "password";
       passwordInput.type = isPassword ? "text" : "password";
-      toggleButton.textContent = isPassword ? "Masquer" : "Afficher";
+      toggleButton.setAttribute("aria-pressed", String(isPassword));
       toggleButton.setAttribute("aria-label", isPassword ? "Masquer le mot de passe" : "Afficher le mot de passe");
+      toggleButton.title = isPassword ? "Masquer le mot de passe" : "Afficher le mot de passe";
     });
 
     loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const username = usernameInput.value.trim();
       const password = passwordInput.value;
-
       if (!username || !password) {
         errorBox.hidden = false;
-        errorBox.textContent = "Veuillez renseigner votre username et votre mot de passe.";
+        errorBox.textContent = "Veuillez renseigner votre e-mail ou votre identifiant et votre mot de passe.";
         return;
       }
 
-      const success = await store.loginAdminAsync(username, password);
-      if (success) {
-        window.location.href = "administration.html";
+      const result = await store.authenticateAccount(username, password);
+      if (result.success) {
+        window.location.href = result.role === "admin" ? "administration.html" : "client.html";
         return;
       }
-
       errorBox.hidden = false;
-      errorBox.textContent = "Identifiants incorrects. Veuillez vérifier votre username et votre mot de passe.";
+      errorBox.textContent = result.message || "Identifiants incorrects.";
       passwordInput.value = "";
       passwordInput.focus();
     });
-
     return;
   }
 
   const adminPage = document.getElementById("adminProductForm");
-  if (!adminPage) {
-    return;
-  }
-
+  if (!adminPage) return;
   if (!store.isAdminAuthenticated()) {
     window.location.href = "admin-login.html";
     return;
   }
+
+  store.getAccountSession().then((session) => {
+    if (!session.authenticated || session.account?.role !== "admin") {
+      window.location.href = "admin-login.html";
+    }
+  });
 
   const form = document.getElementById("adminProductForm");
   const productImageInput = document.getElementById("productImage");
@@ -83,9 +85,12 @@
   const confirmBackdrop = document.getElementById("adminConfirmBackdrop");
   const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
   const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
-  const doLogout = () => {
-    store.logoutAdmin();
-    window.location.href = "admin-login.html";
+  const adminTabs = Array.from(document.querySelectorAll("[data-admin-view]"));
+  const adminPanels = Array.from(document.querySelectorAll("[data-admin-panel]"));
+  let activeAdminView = "addProduct";
+  const doLogout = async () => {
+    await store.logoutAdmin();
+    window.location.href = "index.html";
   };
 
   if (adminMenuToggle && adminMobileMenu) {
@@ -93,7 +98,6 @@
       const isOpen = adminMobileMenu.classList.toggle("open");
       adminMenuToggle.setAttribute("aria-expanded", String(isOpen));
     });
-
     adminMobileMenu.querySelectorAll("a, button").forEach((item) => {
       item.addEventListener("click", () => {
         adminMobileMenu.classList.remove("open");
@@ -102,19 +106,48 @@
     });
   }
 
-  const state = {
-    editingId: null,
-    pendingImage: "",
-    pendingDeleteId: null
-  };
+  const state = { editingId: null, pendingImage: "", pendingDeleteId: null };
+
+  function showAdminView(viewName, moveFocus = false) {
+    activeAdminView = viewName;
+    adminTabs.forEach((tab) => {
+      const isActive = tab.dataset.adminView === viewName;
+      tab.classList.toggle("active", isActive);
+      tab.setAttribute("aria-selected", String(isActive));
+      tab.tabIndex = isActive ? 0 : -1;
+      if (isActive && moveFocus) tab.focus();
+    });
+    adminPanels.forEach((panel) => {
+      panel.hidden = panel.dataset.adminPanel !== viewName;
+    });
+
+    if (viewName === "products") renderProducts();
+    if (viewName === "trash") renderTrashList();
+    if (viewName === "dashboard") loadDecisionDashboard();
+  }
+
+  adminTabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => showAdminView(tab.dataset.adminView));
+    tab.addEventListener("keydown", (event) => {
+      let nextIndex = index;
+      if (event.key === "ArrowRight") nextIndex = (index + 1) % adminTabs.length;
+      else if (event.key === "ArrowLeft") nextIndex = (index - 1 + adminTabs.length) % adminTabs.length;
+      else if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = adminTabs.length - 1;
+      else return;
+      event.preventDefault();
+      showAdminView(adminTabs[nextIndex].dataset.adminView, true);
+    });
+  });
+
+  window.addEventListener("dorcashop:catalog-updated", () => renderProducts());
+  window.addEventListener("storage", (event) => {
+    if (event.key === "dorcashop_catalog_changed_v1") renderProducts();
+  });
 
   function formatCompactNumber(value) {
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
-    }
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
-    }
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
     return String(value);
   }
 
@@ -123,257 +156,17 @@
   }
 
   function scrollToElement(element, offset = 90) {
-    if (!element) {
-      return;
-    }
-
+    if (!element) return;
     const top = Math.max(0, element.getBoundingClientRect().top + window.scrollY - offset);
-    window.scrollTo({
-      top,
-      behavior: "smooth"
-    });
+    window.scrollTo({ top, behavior: "smooth" });
   }
 
   function setGlobalMessage(type, text) {
-    if (!globalMessage) {
-      return;
-    }
-
+    if (!globalMessage) return;
     globalMessage.className = `admin-message ${type}`;
     globalMessage.textContent = text || "";
     globalMessage.hidden = !text;
-
-    if (text) {
-      requestAnimationFrame(() => scrollToElement(globalMessage, 90));
-    }
-  }
-
-  function getDashboardAnalytics(products) {
-    const categories = {};
-    products.forEach((product) => {
-      const name = String(product.category || product.cats?.[0] || "Divers").trim() || "Divers";
-      categories[name] = (categories[name] || 0) + 1;
-    });
-
-    const categoryData = Object.entries(categories).map(([label, count]) => ({ label, count }));
-    const metrics = store.getDashboardMetrics ? store.getDashboardMetrics() : { visitors: 300, orders: 50, revenue: 100000, conversion: 1.7 };
-    const visitorsTotal = Math.max(0, Number(metrics.visitors) || 300);
-    const ordersTotal = Math.max(0, Number(metrics.orders) || 50);
-    const revenueTotal = Math.max(0, Number(metrics.revenue) || 100000);
-    const conversionRate = Number(metrics.conversion) || ((ordersTotal / visitorsTotal) * 100 || 0);
-
-    const visitorSeries = [0.82, 0.94, 0.88, 1.08, 1.15, 1.02, 1.2].map((factor) => {
-      const value = Math.round(visitorsTotal * factor);
-      return Math.max(30, value);
-    });
-
-    const ordersSeries = [0.56, 0.72, 0.7, 0.92, 1.04, 1.22, 1.38].map((factor) => {
-      const value = Math.round(ordersTotal * factor);
-      return Math.max(8, value);
-    });
-
-    const revenueSeries = [0.62, 0.76, 0.74, 0.98, 1.18, 1.3, 1.5].map((factor) => {
-      const value = Math.round(revenueTotal * factor);
-      return Math.max(15000, value);
-    });
-
-    return {
-      visitorSeries,
-      ordersSeries,
-      revenueSeries,
-      categoryData,
-      visitorsTotal,
-      ordersTotal,
-      revenueTotal,
-      conversionRate,
-      labels: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
-    };
-  }
-
-  function drawLineChart(svg, visitors, revenue) {
-    if (!svg) {
-      return;
-    }
-
-    const width = 620;
-    const height = 220;
-    const padding = { top: 20, right: 30, bottom: 28, left: 30 };
-    const maxValue = Math.max(...visitors, ...revenue, 1);
-    const innerWidth = width - padding.left - padding.right;
-    const innerHeight = height - padding.top - padding.bottom;
-
-    const pointFromValue = (value, index) => {
-      const x = padding.left + (index / (visitors.length - 1)) * innerWidth;
-      const y = height - padding.bottom - ((value / maxValue) * innerHeight);
-      return { x, y };
-    };
-
-    const visitorPoints = visitors.map((value, index) => pointFromValue(value, index));
-    const revenuePoints = revenue.map((value, index) => pointFromValue(value, index));
-
-    const visitorPath = visitorPoints.map((point, index) => `${index === 0 ? "M" : "L"}${point.x} ${point.y}`).join(" ");
-    const revenuePath = revenuePoints.map((point, index) => `${index === 0 ? "M" : "L"}${point.x} ${point.y}`).join(" ");
-
-    const gridLines = Array.from({ length: 4 }, (_, index) => {
-      const y = padding.top + (index / 3) * innerHeight;
-      return `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(20,35,67,.08)" stroke-width="1" />`;
-    }).join("");
-
-    const xLabels = visitors.map((_, index) => {
-      const x = padding.left + (index / (visitors.length - 1)) * innerWidth;
-      return `<text x="${x}" y="${height - 8}" text-anchor="middle" fill="#6A6E7D" font-size="10">${["L", "M", "M", "J", "V", "S", "D"][index]}</text>`;
-    }).join("");
-
-    svg.innerHTML = `
-      <defs>
-        <linearGradient id="visitorGradient" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="rgba(230,0,126,0.3)" />
-          <stop offset="100%" stop-color="rgba(230,0,126,0)" />
-        </linearGradient>
-        <linearGradient id="revenueGradient" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="rgba(20,35,67,0.22)" />
-          <stop offset="100%" stop-color="rgba(20,35,67,0)" />
-        </linearGradient>
-      </defs>
-      ${gridLines}
-      <path d="${revenuePath} L ${width - padding.right} ${height - padding.bottom} L ${padding.left} ${height - padding.bottom} Z" fill="url(#revenueGradient)" opacity="0.7"></path>
-      <path d="${visitorPath}" fill="none" stroke="#E6007E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
-      <path d="${revenuePath}" fill="none" stroke="#142343" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
-      ${visitorPoints.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="4" fill="#E6007E" />`).join("")}
-      ${revenuePoints.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="4" fill="#142343" />`).join("")}
-      ${xLabels}
-    `;
-  }
-
-  function renderOrdersBars(values) {
-    const container = document.getElementById("ordersBars");
-    if (!container) {
-      return;
-    }
-
-    const maxValue = Math.max(...values, 1);
-    container.innerHTML = values.map((value, index) => {
-      const height = Math.max((value / maxValue) * 100, 10);
-      return `
-        <div class="bar-column">
-          <span class="bar-value">${value}</span>
-          <span class="bar-track"><span class="bar-fill" style="height:${height}%"></span></span>
-          <span class="bar-label">${["L", "M", "M", "J", "V", "S", "D"][index]}</span>
-        </div>
-      `;
-    }).join("");
-  }
-
-  function renderProductGauge(containerId, title, value, color) {
-    const container = document.getElementById(containerId);
-    if (!container) {
-      return;
-    }
-
-    container.innerHTML = `
-      <div class="goal-gauge">
-        <div class="gauge-ring" style="--gauge-color:${color}; --angle:${value};">
-          <span>${value}%</span>
-        </div>
-        <small>${title}</small>
-      </div>
-    `;
-  }
-
-  function renderCategoryBars(categoryData) {
-    const container = document.getElementById("categoryBars");
-    if (!container) {
-      return;
-    }
-
-    const maxCount = Math.max(...categoryData.map((item) => item.count), 1);
-    container.innerHTML = categoryData.map((item, index) => {
-      const width = (item.count / maxCount) * 100;
-      const palette = ["#E6007E", "#142343", "#FF6A00", "#14A56B", "#FFD400"];
-      return `
-        <div class="category-item">
-          <div class="category-meta">
-            <span>${item.label}</span>
-            <strong>${item.count}</strong>
-          </div>
-          <div class="category-track">
-            <span class="category-fill" style="width:${width}%; background:${palette[index % palette.length]};"></span>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  function getDecisionInsights(products) {
-    const productScores = products.map((product) => {
-      const numericPrice = Number(String(product.price || "").replace(/[^\d]/g, "")) || 1200;
-      const badgeWeight = String(product.badge || "").trim() ? 1.35 : 1;
-      const freshWeight = store.isRecentProduct && store.isRecentProduct(product, 30) ? 1.25 : 1;
-      const sales = Math.max(4, Math.round((numericPrice / 140) * badgeWeight * freshWeight * 1.6));
-      const revenue = sales * Math.max(900, numericPrice * 0.82);
-      return {
-        name: product.name,
-        category: product.category || product.cats?.[0] || "Divers",
-        sales,
-        revenue,
-        score: sales + Math.round(revenue / 1000)
-      };
-    });
-
-    const topProducts = [...productScores].sort((a, b) => b.score - a.score).slice(0, 5);
-    const watchlist = [...productScores].sort((a, b) => a.score - b.score).slice(0, 4);
-    const recommendations = [
-      { label: "Mettre en avant", value: topProducts[0]?.name || "Produit phare", detail: "Le produit qui convertit le mieux" },
-      { label: "Relancer", value: watchlist[0]?.name || "Produit faible", detail: "À remettre en promotion pour réactiver les ventes" },
-      { label: "Segmenter", value: "Promotions", detail: "Cibler les catégories à forte affluence" }
-    ];
-
-    return { topProducts, watchlist, recommendations };
-  }
-
-  function renderDecisionInsights() {
-    const products = store.getCatalogProducts();
-    const insights = getDecisionInsights(products);
-
-    const topProductsList = document.getElementById("topProductsList");
-    const watchlistProducts = document.getElementById("watchlistProducts");
-    const decisionRecommendations = document.getElementById("decisionRecommendations");
-
-    if (topProductsList) {
-      topProductsList.innerHTML = insights.topProducts.map((item, index) => `
-        <li class="decision-item">
-          <div class="decision-copy">
-            <span class="decision-label">${index + 1}. ${item.name}</span>
-            <span class="decision-meta">${item.category}</span>
-          </div>
-          <strong class="decision-value">${item.sales} ventes</strong>
-        </li>
-      `).join("");
-    }
-
-    if (watchlistProducts) {
-      watchlistProducts.innerHTML = insights.watchlist.map((item) => `
-        <li class="decision-item">
-          <div class="decision-copy">
-            <span class="decision-label">${item.name}</span>
-            <span class="decision-meta">${item.category}</span>
-          </div>
-          <strong class="decision-value">${item.sales}</strong>
-        </li>
-      `).join("");
-    }
-
-    if (decisionRecommendations) {
-      decisionRecommendations.innerHTML = insights.recommendations.map((item) => `
-        <li class="recommendation-item">
-          <div class="recommendation-copy">
-            <span class="recommendation-label">${item.label}</span>
-            <span class="recommendation-detail">${item.detail}</span>
-          </div>
-          <span class="recommendation-pill">${item.value}</span>
-        </li>
-      `).join("");
-    }
+    if (text) requestAnimationFrame(() => scrollToElement(globalMessage, 90));
   }
 
   function renderDashboardStats() {
@@ -401,40 +194,135 @@
     if (productCountBadge) {
       productCountBadge.textContent = `${products.length} produit(s)`;
     }
+  }
 
-    const analytics = getDashboardAnalytics(products);
-    const conversionRate = document.getElementById("conversionRate");
-    const metricVisitors = document.getElementById("metricVisitors");
-    const metricOrders = document.getElementById("metricOrders");
-    const metricRevenue = document.getElementById("metricRevenue");
-    const conversionDonut = document.getElementById("conversionDonut");
+  function escapeAnalyticsText(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[character]));
+  }
 
-    if (conversionRate) {
-      conversionRate.textContent = `${analytics.conversionRate.toFixed(1)}%`;
+  function renderAnalyticsLineChart(daily) {
+    const svg = document.getElementById("analyticsVisitorsChart");
+    if (!svg) return;
+    const width = 640;
+    const height = 230;
+    const padding = { top: 18, right: 20, bottom: 30, left: 36 };
+    const maxValue = Math.max(1, ...daily.flatMap((day) => [Number(day.visitors) || 0, Number(day.orders) || 0]));
+    const innerWidth = width - padding.left - padding.right;
+    const innerHeight = height - padding.top - padding.bottom;
+    const point = (value, index) => ({
+      x: padding.left + (index / Math.max(daily.length - 1, 1)) * innerWidth,
+      y: height - padding.bottom - ((Number(value) || 0) / maxValue) * innerHeight
+    });
+    const seriesPath = (key) => daily.map((day, index) => {
+      const coordinates = point(day[key], index);
+      return `${index === 0 ? "M" : "L"}${coordinates.x} ${coordinates.y}`;
+    }).join(" ");
+    const grid = Array.from({ length: 4 }, (_, index) => {
+      const y = padding.top + (index / 3) * innerHeight;
+      const value = Math.round(maxValue * (1 - index / 3));
+      return `<g><line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="#e9e7e2"/><text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" fill="#777b86" font-size="10">${value}</text></g>`;
+    }).join("");
+    const labels = daily.map((day, index) => {
+      const coordinates = point(0, index);
+      return `<text x="${coordinates.x}" y="${height - 8}" text-anchor="middle" fill="#777b86" font-size="10">${escapeAnalyticsText(day.label)}</text>`;
+    }).join("");
+    const dots = (key, color) => daily.map((day, index) => {
+      const coordinates = point(day[key], index);
+      return `<circle cx="${coordinates.x}" cy="${coordinates.y}" r="3.5" fill="${color}"/>`;
+    }).join("");
+
+    svg.innerHTML = `${grid}<path d="${seriesPath("visitors")}" fill="none" stroke="#E6007E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="${seriesPath("orders")}" fill="none" stroke="#16865d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots("visitors", "#E6007E")}${dots("orders", "#16865d")}${labels}`;
+  }
+
+  function renderAnalyticsOrders(daily) {
+    const container = document.getElementById("analyticsOrdersBars");
+    if (!container) return;
+    const maxValue = Math.max(1, ...daily.map((day) => Number(day.orders) || 0));
+    container.innerHTML = daily.map((day) => {
+      const value = Number(day.orders) || 0;
+      const barHeight = value > 0 ? Math.max((value / maxValue) * 100, 4) : 0;
+      return `<div class="decision-order-column"><span class="decision-order-value">${value}</span><span class="decision-order-track"><i style="height:${barHeight}%"></i></span><span class="decision-order-label">${escapeAnalyticsText(day.label)}</span></div>`;
+    }).join("");
+  }
+
+  function renderAnalyticsCategories(categories) {
+    const container = document.getElementById("analyticsCategoryBars");
+    if (!container) return;
+    if (!categories.length) {
+      container.innerHTML = '<p class="decision-empty">Aucun produit au catalogue.</p>';
+      return;
+    }
+    const maxCount = Math.max(1, ...categories.map((category) => Number(category.count) || 0));
+    container.innerHTML = categories.map((category) => {
+      const count = Number(category.count) || 0;
+      return `<div class="decision-category-item"><div class="decision-category-meta"><span>${escapeAnalyticsText(category.label)}</span><strong>${count}</strong></div><span class="decision-category-track"><i style="width:${(count / maxCount) * 100}%"></i></span></div>`;
+    }).join("");
+  }
+
+  function renderAnalyticsGauge(containerId, value, label, color) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const percentage = Math.max(0, Math.min(100, Number(value) || 0));
+    container.innerHTML = `<div class="decision-gauge-item"><div class="decision-gauge-ring" style="--gauge-color:${color};--gauge-value:${percentage}"><strong>${percentage.toFixed(1)}%</strong></div><span>${escapeAnalyticsText(label)}</span></div>`;
+  }
+
+  function renderAnalyticsActivity(activity) {
+    const list = document.getElementById("analyticsActivityList");
+    if (!list) return;
+    if (!activity.length) {
+      list.innerHTML = '<li class="decision-empty">Aucune activité enregistrée pour le moment.</li>';
+      return;
+    }
+    list.innerHTML = activity.map((item) => {
+      const timestamp = new Date(String(item.createdAt || "").replace(" ", "T"));
+      const dateLabel = Number.isNaN(timestamp.getTime()) ? "" : new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }).format(timestamp);
+      const orderDetails = item.type === "whatsapp_order"
+        ? `${Number(item.itemCount) || 0} article(s) · potentiel ${formatCurrency(Number(item.amount) || 0)}`
+        : item.type === "client_registered" ? "Compte client créé" : "Activité catalogue";
+      return `<li class="decision-activity-item"><div><strong>${escapeAnalyticsText(item.description)}</strong><span>${escapeAnalyticsText(orderDetails)}</span></div><time>${escapeAnalyticsText(dateLabel)}</time></li>`;
+    }).join("");
+  }
+
+  async function loadDecisionDashboard() {
+    const loading = document.getElementById("analyticsLoading");
+    const content = document.getElementById("analyticsContent");
+    const errorBox = document.getElementById("analyticsError");
+    const refreshButton = document.getElementById("refreshAnalyticsBtn");
+    if (loading) loading.hidden = false;
+    if (errorBox) errorBox.hidden = true;
+    if (refreshButton) refreshButton.disabled = true;
+
+    const response = await store.getAdminAnalytics();
+    if (loading) loading.hidden = true;
+    if (refreshButton) refreshButton.disabled = false;
+    if (!response.ok || !response.payload.summary) {
+      if (content) content.hidden = true;
+      if (errorBox) {
+        errorBox.textContent = response.payload.message || "Impossible de charger les indicateurs.";
+        errorBox.hidden = false;
+      }
+      return;
     }
 
-    if (conversionDonut) {
-      conversionDonut.style.background = `conic-gradient(#E6007E 0 ${Math.min(analytics.conversionRate, 100)}%, #F2E8D9 ${Math.min(analytics.conversionRate, 100)}% 100%)`;
-    }
-
-    if (metricVisitors) {
-      metricVisitors.textContent = formatCompactNumber(analytics.visitorsTotal);
-    }
-
-    if (metricOrders) {
-      metricOrders.textContent = String(analytics.ordersTotal);
-    }
-
-    if (metricRevenue) {
-      metricRevenue.textContent = formatCurrency(analytics.revenueTotal);
-    }
-
-    drawLineChart(document.getElementById("revenueChartSvg"), analytics.visitorSeries, analytics.revenueSeries);
-    renderOrdersBars(analytics.ordersSeries);
-    renderCategoryBars(analytics.categoryData);
-    renderProductGauge("topProductGauge", "Produit phare", 91, "#E6007E");
-    renderProductGauge("followUpGauge", "Suivi actif", 74, "#142343");
-    renderDecisionInsights();
+    const { summary, daily, categories, activity } = response.payload;
+    document.getElementById("analyticsVisitors").textContent = formatCompactNumber(Number(summary.visitors) || 0);
+    document.getElementById("analyticsClients").textContent = formatCompactNumber(Number(summary.clients) || 0);
+    document.getElementById("analyticsNewClients").textContent = `${Number(summary.newClients) || 0} nouveau(x) cette semaine`;
+    document.getElementById("analyticsOrders").textContent = formatCompactNumber(Number(summary.whatsappOrders) || 0);
+    document.getElementById("analyticsPotentialRevenue").textContent = formatCurrency(Number(summary.potentialRevenue) || 0);
+    renderAnalyticsLineChart(daily || []);
+    renderAnalyticsOrders(daily || []);
+    renderAnalyticsCategories(categories || []);
+    renderAnalyticsGauge("analyticsOrderGauge", summary.orderIntentRate, "Paniers transmis / visiteurs", "#16865d");
+    renderAnalyticsGauge("analyticsCatalogGauge", summary.catalogImageRate, "Produits avec photo", "#E6007E");
+    renderAnalyticsActivity(activity || []);
+    if (content) content.hidden = false;
   }
 
   function renderTrashList() {
@@ -570,6 +458,7 @@
     state.pendingDeleteId = id;
     if (confirmBackdrop) {
       confirmBackdrop.hidden = false;
+      confirmBackdrop.classList.add("open");
       if (confirmDeleteBtn) {
         confirmDeleteBtn.focus();
       }
@@ -578,6 +467,7 @@
 
   function closeDeleteConfirmation() {
     if (confirmBackdrop) {
+      confirmBackdrop.classList.remove("open");
       confirmBackdrop.hidden = true;
     }
     state.pendingDeleteId = null;
@@ -605,9 +495,6 @@
 
     try {
       await store.deleteProduct(id);
-      if (store.recordDashboardEvent) {
-        store.recordDashboardEvent("product_deleted", { visitors: -6, orders: -1, revenue: -3500 });
-      }
       renderProducts();
       setGlobalMessage("success", "Produit supprimé avec succès.");
     } catch (error) {
@@ -688,9 +575,6 @@
 
     if (state.editingId) {
       await store.updateProduct(state.editingId, payload);
-      if (store.recordDashboardEvent) {
-        store.recordDashboardEvent("product_updated", { visitors: 6, orders: 0, revenue: 1500 });
-      }
       setGlobalMessage("success", "Produit modifié avec succès.");
       renderProducts();
       resetForm();
@@ -701,9 +585,6 @@
     }
 
     await store.createProduct(payload);
-    if (store.recordDashboardEvent) {
-      store.recordDashboardEvent("product_created", { visitors: 12, orders: 1, revenue: 2600 });
-    }
     try {
       window.localStorage.setItem("dorcashop_admin_toast_v1", "Produit ajouté avec succès.");
     } catch (error) {
@@ -762,6 +643,8 @@
 
   logoutBtn && logoutBtn.addEventListener("click", doLogout);
   logoutBtnMobile && logoutBtnMobile.addEventListener("click", doLogout);
+  document.getElementById("refreshAnalyticsBtn")?.addEventListener("click", loadDecisionDashboard);
 
+  showAdminView("addProduct");
   renderProducts();
 })();

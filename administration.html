@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
   <title>Administration | DORCASHOP</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,137 +45,14 @@
 
       <div id="adminGlobalMessage" class="admin-message success" hidden></div>
 
-      <section class="admin-panel">
-        <div class="panel-head">
-          <h2>Tableau de bord</h2>
-        </div>
+      <nav class="admin-section-nav" role="tablist" aria-label="Sections de l’administration">
+        <button type="button" id="adminTabAdd" class="admin-section-tab active" role="tab" aria-selected="true" aria-controls="addProductSection" data-admin-view="addProduct">Ajouter un produit</button>
+        <button type="button" id="adminTabProducts" class="admin-section-tab" role="tab" aria-selected="false" aria-controls="existingProductsSection" data-admin-view="products">Produits existants</button>
+        <button type="button" id="adminTabTrash" class="admin-section-tab" role="tab" aria-selected="false" aria-controls="trashSection" data-admin-view="trash">Corbeille</button>
+        <button type="button" id="adminTabDashboard" class="admin-section-tab" role="tab" aria-selected="false" aria-controls="analyticsSection" data-admin-view="dashboard">Dashboard</button>
+      </nav>
 
-        <div class="dashboard-stats">
-          <article class="stat-card stat-card-primary">
-            <span class="stat-label stat-label-pink">Produits</span>
-            <strong id="statTotalProducts" class="stat-value stat-value-navy">19</strong>
-            <span class="stat-trend stat-trend-navy">Catalogue total</span>
-          </article>
-
-          <article class="stat-card stat-card-secondary">
-            <span class="stat-label stat-label-pink">Catégories</span>
-            <strong id="statCategoryCount" class="stat-value stat-value-navy">5</strong>
-            <span class="stat-trend stat-trend-navy">Rayons actifs</span>
-          </article>
-
-          <article class="stat-card stat-card-success">
-            <span class="stat-label stat-label-pink">Nouveautés</span>
-            <strong id="statRecentProducts" class="stat-value stat-value-navy">1</strong>
-            <span class="stat-trend stat-trend-navy">30 derniers jours</span>
-          </article>
-
-          <article class="stat-card stat-card-warning">
-            <span class="stat-label stat-label-pink">Avec badge</span>
-            <strong id="statBadgeProducts" class="stat-value stat-value-navy">7</strong>
-            <span class="stat-trend stat-trend-navy">Promos &amp; best sellers</span>
-          </article>
-        </div>
-      </section>
-
-      <section class="analytics-grid">
-        <article class="analytics-panel analytics-panel-wide">
-          <div class="panel-head panel-head-split">
-            <div>
-              <p class="eyebrow">Performance</p>
-              <h3>Visiteurs &amp; chiffre d'affaires</h3>
-            </div>
-            <span class="panel-badge">7 derniers jours</span>
-          </div>
-
-          <div class="chart-legend">
-            <span><i class="legend-dot visitors"></i>Visiteurs</span>
-            <span><i class="legend-dot revenue"></i>Chiffre d'affaires</span>
-          </div>
-
-          <svg id="revenueChartSvg" class="line-chart" viewBox="0 0 620 220" role="img" aria-label="Graphique des visiteurs et du chiffre d'affaires"></svg>
-        </article>
-
-        <article class="analytics-panel">
-          <div class="panel-head">
-            <p class="eyebrow">Conversion</p>
-            <h3>Activité</h3>
-          </div>
-
-          <div class="conversion-wrap">
-            <div id="conversionDonut" class="conversion-donut">
-              <span id="conversionRate">0%</span>
-            </div>
-          </div>
-
-          <ul class="mini-metrics">
-            <li>
-              <span>Visiteurs</span>
-              <strong id="metricVisitors">0</strong>
-            </li>
-            <li>
-              <span>Commandes</span>
-              <strong id="metricOrders">0</strong>
-            </li>
-            <li>
-              <span>CA</span>
-              <strong id="metricRevenue">0 FCFA</strong>
-            </li>
-          </ul>
-        </article>
-
-        <article class="analytics-panel">
-          <div class="panel-head">
-            <p class="eyebrow">Commandes</p>
-            <h3>Par journée</h3>
-          </div>
-          <div id="ordersBars" class="orders-bars"></div>
-        </article>
-
-        <article class="analytics-panel analytics-panel-wide">
-          <div class="panel-head">
-            <p class="eyebrow">Répartition</p>
-            <h3>Top catégories</h3>
-          </div>
-          <div id="categoryBars" class="category-bars"></div>
-        </article>
-      </section>
-
-      <section class="decision-grid">
-        <article class="analytics-panel">
-          <div class="panel-head panel-head-split">
-            <div>
-              <p class="eyebrow">Produits</p>
-              <h3>Top ventes</h3>
-            </div>
-            <span class="panel-badge">5 meilleurs</span>
-          </div>
-          <ul id="topProductsList" class="decision-list"></ul>
-        </article>
-
-        <article class="analytics-panel">
-          <div class="panel-head panel-head-split">
-            <div>
-              <p class="eyebrow">Surveillance</p>
-              <h3>À relancer</h3>
-            </div>
-            <span class="panel-badge">À revoir</span>
-          </div>
-          <ul id="watchlistProducts" class="decision-list decision-list-alert"></ul>
-        </article>
-
-        <article class="analytics-panel analytics-panel-wide">
-          <div class="panel-head panel-head-split">
-            <div>
-              <p class="eyebrow">Conseils</p>
-              <h3>Recommandations</h3>
-            </div>
-            <span class="panel-badge">Actions</span>
-          </div>
-          <ul id="decisionRecommendations" class="recommendations-list"></ul>
-        </article>
-      </section>
-
-      <section class="admin-panel">
+      <section class="admin-panel admin-view-panel" id="addProductSection" role="tabpanel" aria-labelledby="adminTabAdd" data-admin-panel="addProduct">
         <div class="panel-head">
           <h2>Ajouter un produit</h2>
         </div>
@@ -237,7 +115,7 @@
         </form>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel admin-view-panel" id="existingProductsSection" role="tabpanel" aria-labelledby="adminTabProducts" data-admin-panel="products" hidden>
         <div class="panel-head panel-head-split">
           <h2>Produits existants</h2>
           <span id="productCountBadge" class="panel-badge">0 produit(s)</span>
@@ -251,7 +129,7 @@
         <div id="existingProductsList" class="existing-products-list"></div>
       </section>
 
-      <section class="admin-panel">
+      <section class="admin-panel admin-view-panel" id="trashSection" role="tabpanel" aria-labelledby="adminTabTrash" data-admin-panel="trash" hidden>
         <div class="panel-head panel-head-split">
           <h2>Corbeille</h2>
           <span id="deletedProductCountBadge" class="panel-badge">0 élément(s)</span>
@@ -261,6 +139,101 @@
           <button type="button" id="clearTrashBtn" class="btn btn-primary btn-sm">Vider la corbeille</button>
         </div>
         <div id="deletedProductsList" class="deleted-products-list"></div>
+      </section>
+
+      <section class="decision-dashboard admin-view-panel" id="analyticsSection" role="tabpanel" aria-labelledby="adminTabDashboard" data-admin-panel="dashboard" hidden>
+        <div class="decision-dashboard-head">
+          <div>
+            <span class="decision-dashboard-overline">PILOTAGE · 7 DERNIERS JOURS</span>
+            <h2 id="decisionDashboardTitle">Tableau de bord décisionnel</h2>
+            <p>Activité mesurée sur la boutique et son catalogue.</p>
+          </div>
+          <button type="button" id="refreshAnalyticsBtn" class="btn btn-outline btn-sm">Actualiser</button>
+        </div>
+        <div id="analyticsError" class="admin-message error" role="alert" aria-live="polite" hidden></div>
+        <div id="analyticsLoading" class="analytics-loading" aria-live="polite">Chargement des indicateurs…</div>
+        <div id="analyticsContent" hidden>
+          <div class="decision-kpis">
+            <article class="decision-kpi kpi-visitors">
+              <span>Visiteurs uniques</span>
+              <strong id="analyticsVisitors">—</strong>
+              <small>Sur les 7 derniers jours</small>
+            </article>
+            <article class="decision-kpi kpi-clients">
+              <span>Comptes clients</span>
+              <strong id="analyticsClients">—</strong>
+              <small id="analyticsNewClients">— nouveau(x) cette semaine</small>
+            </article>
+            <article class="decision-kpi kpi-orders">
+              <span>Paniers transmis</span>
+              <strong id="analyticsOrders">—</strong>
+              <small>Intentions WhatsApp · 7 jours</small>
+            </article>
+            <article class="decision-kpi kpi-revenue">
+              <span>Valeur potentielle</span>
+              <strong id="analyticsPotentialRevenue">—</strong>
+              <small>Montant des paniers transmis</small>
+            </article>
+          </div>
+
+          <p class="decision-disclaimer">Les paniers transmis à WhatsApp ne sont pas des ventes confirmées. Le chiffre d’affaires réel n’est pas suivi par le site.</p>
+
+          <div class="decision-chart-grid">
+            <section class="decision-chart-panel decision-chart-wide" aria-labelledby="visitorsChartTitle">
+              <div class="decision-chart-heading">
+                <div>
+                  <span class="decision-dashboard-overline">TENDANCE</span>
+                  <h3 id="visitorsChartTitle">Visiteurs & paniers transmis</h3>
+                </div>
+                <div class="decision-legend"><span><i class="legend-visitor"></i>Visiteurs</span><span><i class="legend-order"></i>Paniers</span></div>
+              </div>
+              <svg id="analyticsVisitorsChart" class="decision-line-chart" viewBox="0 0 640 230" role="img" aria-label="Évolution quotidienne des visiteurs et des paniers transmis"></svg>
+            </section>
+            <section class="decision-chart-panel decision-gauge-panel" aria-labelledby="analyticsGaugesTitle">
+              <div class="decision-chart-heading">
+                <div>
+                  <span class="decision-dashboard-overline">QUALITÉ DU PARCOURS</span>
+                  <h3 id="analyticsGaugesTitle">Jauges de suivi</h3>
+                </div>
+              </div>
+              <div class="decision-gauges">
+                <div id="analyticsOrderGauge"></div>
+                <div id="analyticsCatalogGauge"></div>
+              </div>
+            </section>
+          </div>
+
+          <div class="decision-chart-grid">
+            <section class="decision-chart-panel" aria-labelledby="ordersChartTitle">
+              <div class="decision-chart-heading">
+                <div>
+                  <span class="decision-dashboard-overline">WHATSAPP</span>
+                  <h3 id="ordersChartTitle">Paniers transmis par jour</h3>
+                </div>
+              </div>
+              <div id="analyticsOrdersBars" class="decision-order-bars" role="img" aria-label="Nombre de paniers transmis par jour"></div>
+            </section>
+            <section class="decision-chart-panel" aria-labelledby="categoriesChartTitle">
+              <div class="decision-chart-heading">
+                <div>
+                  <span class="decision-dashboard-overline">CATALOGUE</span>
+                  <h3 id="categoriesChartTitle">Produits par famille</h3>
+                </div>
+              </div>
+              <div id="analyticsCategoryBars" class="decision-category-bars"></div>
+            </section>
+          </div>
+
+          <section class="decision-chart-panel decision-activity-panel" aria-labelledby="activityTitle">
+            <div class="decision-chart-heading">
+              <div>
+                <span class="decision-dashboard-overline">SUIVI</span>
+                <h3 id="activityTitle">Activité récente</h3>
+              </div>
+            </div>
+            <ol id="analyticsActivityList" class="decision-activity-list"></ol>
+          </section>
+        </div>
       </section>
     </section>
   </main>

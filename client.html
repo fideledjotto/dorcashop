@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Espace client | DORCASHOP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="client-page">
+  <header class="client-topbar">
+    <div class="container client-topbar-inner">
+      <a href="index.html" aria-label="DORCASHOP, accueil">
+        <img src="images/logo.png" alt="DORCASHOP" class="logo-image client-logo">
+      </a>
+      <a href="index.html#produits" class="btn btn-outline btn-sm">Continuer les achats</a>
+    </div>
+  </header>
+  <main class="client-shell">
+    <div id="clientLoading" class="client-heading" aria-live="polite">Chargement de votre espace...</div>
+    <section id="clientContent" hidden>
+      <div class="client-heading">
+        <span>Espace client</span>
+        <h1>Bonjour <strong id="clientName"></strong></h1>
+        <p>Votre compte DORCASHOP est prêt pour vos prochains achats.</p>
+      </div>
+      <dl class="client-profile">
+        <div>
+          <dt>Nom complet</dt>
+          <dd id="clientProfileName"></dd>
+        </div>
+        <div>
+          <dt>Adresse e-mail</dt>
+          <dd id="clientEmail"></dd>
+        </div>
+      </dl>
+      <div class="client-actions">
+        <a href="index.html#produits" class="btn btn-primary">Découvrir les produits</a>
+        <button type="button" id="clientLogout" class="btn btn-outline">Se déconnecter</button>
+      </div>
+    </section>
+  </main>
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/client.js"></script>
+</body>
+</html>
