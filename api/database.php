@@ -25,9 +25,18 @@ function database(): PDO
         PDO::ATTR_EMULATE_PREPARES => false,
     ];
 
-    $bootstrap = new PDO("mysql:host={$host};port={$port};charset=utf8mb4", $user, $password, $options);
-    $bootstrap->exec("CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-    unset($bootstrap);
+    $createDatabaseSetting = getenv('MYSQL_CREATE_DATABASE');
+    $createDatabase = $createDatabaseSetting === false
+        ? true
+        : filter_var($createDatabaseSetting, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    if ($createDatabase === null) {
+        throw new RuntimeException('MYSQL_CREATE_DATABASE doit valoir true ou false.');
+    }
+    if ($createDatabase) {
+        $bootstrap = new PDO("mysql:host={$host};port={$port};charset=utf8mb4", $user, $password, $options);
+        $bootstrap->exec("CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        unset($bootstrap);
+    }
 
     $pdo = new PDO("mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4", $user, $password, $options);
     $pdo->exec(

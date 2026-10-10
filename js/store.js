@@ -130,9 +130,12 @@
       try {
         payload = JSON.parse(text);
       } catch (error) {
+        const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;
+        const detail = text.trim().replace(/\s+/g, " ").slice(0, 300);
+        const responseDetail = detail ? ` Réponse du serveur : ${detail}` : "";
         const message = response.status === 404
-          ? "Route API introuvable : le backend PHP n'est pas déployé sur cet hébergement."
-          : `Le serveur a renvoyé une réponse non JSON (HTTP ${response.status}).`;
+          ? `Route API introuvable : le backend PHP n'est pas déployé sur cet hébergement (HTTP ${status}).${responseDetail}`
+          : `Le serveur a renvoyé une réponse non JSON (HTTP ${status}).${responseDetail}`;
         return { ok: false, status: response.status, payload: { message } };
       }
     }
