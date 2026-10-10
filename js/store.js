@@ -105,18 +105,55 @@
   }
 
   async function fetchJson(url, options = {}) {
+    let response;
+    let text;
     try {
-      const response = await fetch(url, {
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-        ...options
+      response = await fetch(url, {
+        ...options,
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(options.headers || {})
+        }
       });
-
-      const text = await response.text();
-      const payload = text ? JSON.parse(text) : {};
-      return { ok: response.ok, status: response.status, payload };
+      text = await response.text();
     } catch (error) {
-      return { ok: false, status: 0, payload: { message: String(error) } };
+      return {
+        ok: false,
+        status: 0,
+        payload: { message: "Impossible de joindre le serveur API. Vérifiez le déploiement du backend." }
+      };
     }
+
+    let payload = {};
+    if (text.trim()) {
+      try {
+        payload = JSON.parse(text);
+      } catch (error) {
+        const message = response.status === 404
+          ? "Route API introuvable : le backend PHP n'est pas déployé sur cet hébergement."
+          : `Le serveur a renvoyé une réponse non JSON (HTTP ${response.status}).`;
+        return { ok: false, status: response.status, payload: { message } };
+      }
+    }
+
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return {
+        ok: false,
+        status: response.status,
+        payload: { message: `Réponse API invalide (HTTP ${response.status}).` }
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        payload: { ...payload, message: payload.message || `Erreur API HTTP ${response.status}.` }
+      };
+    }
+
+    return { ok: true, status: response.status, payload };
   }
 
   async function loadProductsFromServer() {
