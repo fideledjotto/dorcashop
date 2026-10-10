@@ -584,7 +584,20 @@
       return;
     }
 
-    await store.createProduct(payload);
+    const submitButton = form.querySelector("button[type='submit']");
+    submitButton.disabled = true;
+    submitButton.setAttribute("aria-busy", "true");
+    try {
+      await store.createProduct(payload);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Le produit n’a pas pu être enregistré.";
+      setGlobalMessage("error", message);
+      return;
+    } finally {
+      submitButton.disabled = false;
+      submitButton.removeAttribute("aria-busy");
+    }
+
     try {
       window.localStorage.setItem("dorcashop_admin_toast_v1", "Produit ajouté avec succès.");
     } catch (error) {

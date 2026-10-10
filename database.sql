@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS products (
     name VARCHAR(255) NOT NULL,
     category VARCHAR(100) NOT NULL,
     cats JSON NOT NULL,
-    img TEXT NULL,
+    img MEDIUMTEXT NULL,
     description TEXT NULL,
     price VARCHAR(255) NOT NULL,
     old_price VARCHAR(255) NULL,

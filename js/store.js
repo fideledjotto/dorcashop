@@ -373,30 +373,24 @@
       badge: input && input.badge ? input.badge : "NOUVEAU"
     }, `custom-${createdAt}`);
 
-    const stored = getStoredProducts();
-    stored.push(clean);
-    saveStoredProducts(stored);
-
-    if (typeof fetch === "function") {
-      try {
-        const response = await fetchJson(apiUrl("products"), {
-          method: "POST",
-          body: JSON.stringify(clean)
-        });
-
-        if (response.ok && response.payload && response.payload.product) {
-          const serverProduct = normalizeProduct(response.payload.product);
-          const nextStored = getStoredProducts().filter((product) => String(product.id) !== String(serverProduct.id));
-          nextStored.unshift(serverProduct);
-          saveStoredProducts(nextStored);
-          return serverProduct;
-        }
-      } catch (error) {
-        // keep the local fallback when the backend is unavailable
-      }
+    if (typeof fetch !== "function") {
+      throw new Error("La création de produits nécessite une connexion au serveur.");
     }
 
-    return clean;
+    const response = await fetchJson(apiUrl("products"), {
+      method: "POST",
+      body: JSON.stringify(clean)
+    });
+    if (!response.ok || !response.payload || !response.payload.product) {
+      const status = response.status ? ` (HTTP ${response.status})` : "";
+      throw new Error(`${response.payload.message || "Le produit n’a pas pu être enregistré."}${status}`);
+    }
+
+    const serverProduct = normalizeProduct(response.payload.product);
+    const nextStored = getStoredProducts().filter((product) => String(product.id) !== String(serverProduct.id));
+    nextStored.unshift(serverProduct);
+    saveStoredProducts(nextStored);
+    return serverProduct;
   }
 
   async function updateProduct(id, updates) {

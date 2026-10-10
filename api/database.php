@@ -96,7 +96,7 @@ function database(): PDO
             name VARCHAR(255) NOT NULL,
             category VARCHAR(100) NOT NULL,
             cats JSON NOT NULL,
-            img TEXT NULL,
+            img MEDIUMTEXT NULL,
             description TEXT NULL,
             price VARCHAR(255) NOT NULL,
             old_price VARCHAR(255) NULL,
@@ -148,6 +148,14 @@ function database(): PDO
             INDEX idx_api_sessions_last_activity (last_activity)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+
+    $imageColumnType = $pdo->query(
+        "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND COLUMN_NAME = 'img'"
+    )->fetchColumn();
+    if (in_array(strtolower((string)$imageColumnType), ['tinytext', 'text'], true)) {
+        $pdo->exec('ALTER TABLE products MODIFY img MEDIUMTEXT NULL');
+    }
 
     seedProductsFromJson($pdo);
     return $pdo;
