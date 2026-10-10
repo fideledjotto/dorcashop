@@ -2,6 +2,57 @@
 
 declare(strict_types=1);
 
+final class DatabaseSessionHandler implements SessionHandlerInterface
+{
+    public function __construct(private PDO $pdo)
+    {
+    }
+
+    public function open(string $path, string $name): bool
+    {
+        return true;
+    }
+
+    public function close(): bool
+    {
+        return true;
+    }
+
+    public function read(string $id): string|false
+    {
+        $statement = $this->pdo->prepare('SELECT session_data FROM api_sessions WHERE session_id = ? AND last_activity >= ?');
+        $statement->execute([$id, time() - (int)ini_get('session.gc_maxlifetime')]);
+        $data = $statement->fetchColumn();
+
+        return $data === false ? '' : (string)$data;
+    }
+
+    public function write(string $id, string $data): bool
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO api_sessions (session_id, session_data, last_activity) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE session_data = VALUES(session_data), last_activity = VALUES(last_activity)'
+        );
+
+        return $statement->execute([$id, $data, time()]);
+    }
+
+    public function destroy(string $id): bool
+    {
+        $statement = $this->pdo->prepare('DELETE FROM api_sessions WHERE session_id = ?');
+
+        return $statement->execute([$id]);
+    }
+
+    public function gc(int $max_lifetime): int|false
+    {
+        $statement = $this->pdo->prepare('DELETE FROM api_sessions WHERE last_activity < ?');
+        $statement->execute([time() - $max_lifetime]);
+
+        return $statement->rowCount();
+    }
+}
+
 function database(): PDO
 {
     static $pdo = null;
@@ -87,6 +138,14 @@ function database(): PDO
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_site_events_type_created (event_type, created_at),
             INDEX idx_site_events_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS api_sessions (
+            session_id VARCHAR(128) NOT NULL PRIMARY KEY,
+            session_data MEDIUMBLOB NOT NULL,
+            last_activity INT UNSIGNED NOT NULL,
+            INDEX idx_api_sessions_last_activity (last_activity)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
 

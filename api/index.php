@@ -6,15 +6,6 @@ require_once __DIR__ . '/database.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-session_start();
-
 function respond(array $payload, int $status = 200): never
 {
     http_response_code($status);
@@ -50,6 +41,18 @@ function validVisitorId(mixed $value): bool
 
 try {
     $pdo = database();
+    session_set_save_handler(new DatabaseSessionHandler($pdo), true);
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+            || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+            || getenv('VERCEL') === '1',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     $scriptDirectory = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
     $applicationPath = rtrim(dirname($scriptDirectory), '/');

@@ -43,3 +43,10 @@ CREATE TABLE IF NOT EXISTS site_events (
     INDEX idx_site_events_type_created (event_type, created_at),
     INDEX idx_site_events_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS api_sessions (
+    session_id VARCHAR(128) NOT NULL PRIMARY KEY,
+    session_data MEDIUMBLOB NOT NULL,
+    last_activity INT UNSIGNED NOT NULL,
+    INDEX idx_api_sessions_last_activity (last_activity)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 
